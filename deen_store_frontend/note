@@ -1,64 +1,72 @@
-/app
+/app/
 │
-├── (auth)/                   # Auth pages/layout (login, register)
+├── (auth)/
 │   ├── layout.tsx
 │   ├── login/page.tsx
 │   └── register/page.tsx
 │
-├── (storefront)/             # Customer-facing site
-│   ├── layout.tsx            # Header, footer, main nav
-│   ├── page.tsx              # Home page
+├── (storefront)/
+│   ├── layout.tsx
+│   ├── page.tsx
 │   ├── product/
-│   │   ├── [id]/page.tsx     # Product detail
-│   │   └── page.tsx          # Product listing
 │   ├── cart/
 │   ├── checkout/
 │   └── user/
 │       ├── profile/
 │       └── orders/
 │
-├── (dashboard)/                  # Route group for dashboard views
-│   ├── layout.tsx                # Shared layout (sidebar + topbar)
-│   ├── page.tsx                  # Default dashboard landing (overview/analytics)
-│   ├── products/                 # CRUD for products
-│   │   ├── page.tsx              # Product list
-│   │   └── [id]/page.tsx         # Product detail/edit
-│   ├── orders/                   # Manage orders
-│   ├── inventory/                # Inventory management
-│   ├── suppliers/                # Supplier details
-│   ├── reports/                  # Charts, metrics
-│   ├── users/                    # User list & roles
-│   │   └── [id]/page.tsx         # Edit user by role
-│   └── settings/                # Account/project settings
+├── (dashboard)/
+│   ├── layout.tsx              # Includes <Sidebar /> and <Navbar />
+│   ├── page.tsx
+│   ├── products/
+│   ├── orders/
+│   ├── inventory/
+│   ├── suppliers/
+│   ├── reports/
+│   ├── users/
+│   └── settings/
 │
-/components
-│   ├── layout/                  # Navbar, Sidebar, Footer components
-│   │   ├── Sidebar.tsx
-│   │   ├── Navbar.tsx
-│   │   └── RoleBasedMenu.tsx
-│
-├── (social)/                 # Social media features
+├── (social)/
 │   ├── layout.tsx
 │   ├── feed/
 │   ├── messages/
 │   ├── notifications/
 │   └── profile/
+
+/components/
 │
-/components/                  # Reusable UI components (buttons, forms, modals)
+│   ├── layout/                          # Shared across app
+│   │   ├── Navbar/
+│   │   │   ├── Navbar.tsx
+│   │   │   └── NavbarRoleSwitch.tsx     # Shows role-specific navbar buttons/menus
+│   │   ├── Sidebar/
+│   │   │   ├── Sidebar.tsx
+│   │   │   └── SidebarMenu.tsx          # Renders dynamic links based on role/permission
+│   │   └── RoleBasedLayout.tsx          # Wrapper to manage layouts conditionally
 │
-/components/dashboard/        # Dashboard-specific components (charts, tables)
+│   ├── dashboard/                       # Dashboard-specific UI blocks
+│   │   ├── Charts/
+│   │   └── DataGrid/
 │
-/components/storefront/       # Storefront-specific (product cards, carts)
-│
-/components/social/           # Social features UI (posts, comments)
-/contexts/                   # React contexts (auth, theme, roles)
-/hooks/                      # Custom React hooks (useAuth, useCart, useRole)
-/lib/                        # Utilities (date formatting, currency, apiClient)
-/services/                   # API interaction / business logic wrappers
-/constants/                  # App-wide constants (roles, routes)
-/styles/                     # Global CSS and Tailwind configs
-/public/                     # Static assets (images, fonts)
-/middleware.ts               # Middleware for auth & roles (Next.js middleware)
-/next.config.js              # Next.js config with env variables support
-/tsconfig.json               # TypeScript config
-/package.json                # Dependencies and scripts
+│   ├── storefront/
+│   └── social/
+
+/hooks/
+│   ├── useAuth.ts
+│   ├── useRole.ts                       # Custom logic to get user role & permissions
+│   └── useSidebarConfig.ts              # Generate sidebar config based on role
+
+/contexts/
+│   ├── AuthContext.tsx
+│   ├── RoleContext.tsx
+│   └── LayoutContext.tsx                # Optional: Manage sidebar collapse state
+
+/constants/
+│   ├── roles.ts
+│   └── routes.ts                        # Route mappings per role
+
+/types/
+│   ├── index.ts
+│   └── permission.ts                    # Define roles & permission types
+
+/middleware.ts                            # RBAC or auth redirect logic

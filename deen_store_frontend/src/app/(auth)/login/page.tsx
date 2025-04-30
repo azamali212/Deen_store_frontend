@@ -1,11 +1,123 @@
-import React from 'react'
+'use client';
+
+import React, { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import ForgotPasswordModal from '@/components/auth/ForgotPasswordModal';
+import LoginForm from '@/components/auth/LoginForm';
+
 
 const Login = () => {
-  return (
-    <div>
-      Login Page
-    </div>
-  )
-}
+  const router = useRouter();
 
-export default Login
+  const [isMounted, setIsMounted] = useState(false);
+
+  // Login states
+  const [emailOrPhone, setEmailOrPhone] = useState('');
+  const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+
+  // Modal states
+  const [modalStep, setModalStep] = useState<'method' | 'email' | 'phone' | 'verification' | 'resetPassword' | null>(null);
+  const [resetMethod, setResetMethod] = useState<'email' | 'phone' | null>(null);
+
+  const [forgotEmail, setForgotEmail] = useState('');
+  const [forgotPhone, setForgotPhone] = useState('');
+  const [verificationCode, setVerificationCode] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
+  const handleLogin = (e: React.FormEvent) => {
+    e.preventDefault();
+    console.log('Logging in with:', { emailOrPhone, password });
+    // router.push('/dashboard');
+  };
+
+  const openForgotPassword = () => {
+    setModalStep('method');
+    setResetMethod(null);
+    setForgotEmail('');
+    setForgotPhone('');
+    setVerificationCode('');
+    setNewPassword('');
+    setConfirmPassword('');
+  };
+
+  const handleChooseMethod = (method: 'email' | 'phone') => {
+    setResetMethod(method);
+    setModalStep(method);
+  };
+
+  const handleForgotPasswordSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (resetMethod === 'email') {
+      console.log('Send email to:', forgotEmail);
+    } else {
+      console.log('Send SMS to:', forgotPhone);
+    }
+
+    setModalStep('verification');
+  };
+
+  const handleVerificationSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    console.log('Verify code:', verificationCode);
+    setModalStep('resetPassword');
+  };
+
+  const handleResetPasswordSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (newPassword !== confirmPassword) {
+      alert("Passwords don't match");
+      return;
+    }
+
+    console.log('Reset password to:', newPassword);
+    setModalStep(null);
+    alert('Password reset successfully!');
+  };
+
+  if (!isMounted) return null;
+
+  return (
+    <div className="flex items-center justify-center min-h-screen px-4">
+      <LoginForm
+        variant="customer"
+        emailOrPhone={emailOrPhone}
+        setEmailOrPhone={setEmailOrPhone}
+        password={password}
+        setPassword={setPassword}
+        showPassword={showPassword}
+        setShowPassword={setShowPassword}
+        handleLogin={handleLogin}
+        openForgotPassword={openForgotPassword}
+      />
+
+      <ForgotPasswordModal
+        modalStep={modalStep}
+        onClose={() => setModalStep(null)}
+        forgotEmail={forgotEmail}
+        setForgotEmail={setForgotEmail}
+        forgotPhone={forgotPhone}
+        setForgotPhone={setForgotPhone}
+        verificationCode={verificationCode}
+        setVerificationCode={setVerificationCode}
+        newPassword={newPassword}
+        setNewPassword={setNewPassword}
+        confirmPassword={confirmPassword}
+        setConfirmPassword={setConfirmPassword}
+        onSubmitEmail={handleForgotPasswordSubmit}
+        onSubmitVerification={handleVerificationSubmit}
+        onSubmitResetPassword={handleResetPasswordSubmit}
+        onSelectMethod={handleChooseMethod}
+      />
+    </div>
+  );
+};
+
+export default Login;

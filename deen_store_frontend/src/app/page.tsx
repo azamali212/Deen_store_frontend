@@ -1,4 +1,5 @@
 import Image from "next/image";
+import '@/lib/fontawesome';
 
 export default function Home() {
   return (

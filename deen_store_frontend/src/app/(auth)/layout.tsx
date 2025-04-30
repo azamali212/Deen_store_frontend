@@ -1,17 +1,27 @@
-// /app/(auth)/layout.tsx
+"use client";
 
-import { ReactNode } from 'react';
-
-interface AuthLayoutProps {
-    children: ReactNode;
-}
+import { AuthLayoutProps } from '@/types/ui';
+import { usePathname } from 'next/navigation';
 
 export default function AuthLayout({ children }: AuthLayoutProps) {
-    return (
-        <div className="auth-layout-wrapper">
-            {/* Shared layout for login/register */}
-                <h1>Hlo</h1>
-            <main>{children}</main>
-        </div>
-    );
+  const pathname = usePathname();
+
+  const isShopinintyAdmin = pathname.includes("shopinity_admin_login");
+
+  const backgroundImage = isShopinintyAdmin
+    ? "url('/dashboard_logo/alldone.jpeg')" // admin login bg
+    : "url('/dashboard_logo/background.jpeg')";   // customer login bg
+
+  return (
+    <div
+      className="auth-layout-wrapper min-h-screen bg-cover bg-center"
+      style={{
+        backgroundImage,
+        backgroundSize: "cover",
+        backgroundPosition: "center",
+      }}
+    >
+      <main className="text-gray-500">{children}</main>
+    </div>
+  );
 }

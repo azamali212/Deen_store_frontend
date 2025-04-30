@@ -1,0 +1,30 @@
+/* theme.css */
+@import "tailwindcss";
+
+/* Define color variables */
+:root {
+  --background: #F7F9FB; /* Soft light background */
+  --surface: #FFFFFF;    /* Pure white for cards and forms */
+
+  --text-primary: #111827; /* Dark text for main content */
+  --text-secondary: #6B7280; /* Medium gray for secondary text */
+
+  --primary: #4F46E5;     /* Indigo blue for main buttons and links */
+  --primary-hover: #4338CA; /* Darker indigo for button hover */
+
+  --accent: #10B981;       /* Emerald green for success and highlights */
+
+  --error: #EF4444;        /* Red for error messages */
+
+  --border: #E5E7EB;       /* Light gray for borders and dividers */
+}
+
+/* Media query for dark mode */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #0a0a0a;
+    --surface: #1F2937;
+    --text-primary: #F9FAFB;
+    --text-secondary: #9CA3AF;
+  }
+}
