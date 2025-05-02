@@ -1,35 +1,92 @@
-import React from 'react';
-import { SidebarItemProps } from '@/types/ui';
-import { Colors } from '@/constants/colors';
+'use client';
 
-const SidebarItem: React.FC<SidebarItemProps> = ({ icon, label, collapsed }) => {
+import React, { useEffect, useState } from 'react';
+import { usePathname } from 'next/navigation'; // Updated import
+import { SidebarItemProps } from '@/types/ui';
+import clsx from 'clsx';
+import { Colors } from '@/constants/colors';
+import Link from 'next/link';
+
+const SidebarItem: React.FC<SidebarItemProps> = ({ 
+  icon, 
+  label, 
+  href = '/', 
+  collapsed = false, 
+  activeClass 
+}) => {
+  const [mounted, setMounted] = useState(false);
+  const pathname = usePathname(); // Using usePathname instead of useRouter
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  if (!mounted) {
+    return (
+      <div className={clsx(
+        'flex items-center rounded-lg h-10',
+        collapsed ? 'w-10 justify-center mx-auto' : 'w-full px-3'
+      )} />
+    );
+  }
+
+  const isActive = pathname === href;
+  const activeColor = Colors.ACTIVE;
+  const activeTextColor = Colors.ACTIVETEXT;
+
   return (
-    <div
-      className={`flex items-center p-2.5 rounded-lg cursor-pointer transition-all duration-200 ease-linear ${
-        collapsed ? 'justify-center' : 'justify-start'
-      }`}
+    <Link
+      href={href}
+      className={clsx(
+        'flex items-center rounded-lg transition-colors duration-200',
+        'h-10',
+        {
+          'w-10 justify-center mx-auto': collapsed,
+          'w-full px-3': !collapsed,
+          [`text-[${activeTextColor}]`]: isActive,
+          [`bg-[${activeColor}]`]: isActive,
+          'text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700': !isActive,
+        }
+      )}
+      style={{ backgroundColor: isActive ? activeColor : undefined }}
     >
-      <div className="text-gray-600 dark:text-gray-300 flex items-center justify-center">
-        {React.cloneElement(icon, {
-          size: collapsed ? 20 : 24, // Keep icon size larger when not collapsed
-          strokeWidth: 1.75,
-          className: 'transition-all duration-200 ease-linear',
-        })}
+      {/* Icon container */}
+      <div
+        className={clsx(
+          'flex items-center justify-center',
+          'w-6 h-6',
+          {
+            'text-white dark:text-white': isActive,
+            'text-gray-500 dark:text-gray-400': !isActive,
+          }
+        )}
+        style={{ color: isActive ? activeTextColor : undefined }}
+      >
+        {React.isValidElement(icon) ? 
+          React.cloneElement(icon, {
+            size: 20,
+            strokeWidth: isActive ? 2 : 1.75,
+          }) : 
+          icon
+        }
       </div>
 
-      {/* Label */}
-      <div
-        className={`ml-2.5 transition-all duration-300 whitespace-nowrap overflow-hidden ${
-          collapsed ? 'opacity-0 w-0' : 'opacity-100 w-auto'
-        }`}
-      >
+      {/* Label - only shown when not collapsed */}
+      {!collapsed && (
         <span
-          className={`text-gray-800 dark:text-gray-200 font-small hover:text-[${Colors.SIDEBAR_TEXT}] transition-colors duration-200 leading-[.9]`}
+          className={clsx(
+            'ml-3 whitespace-nowrap',
+            {
+              'font-medium': isActive,
+              'font-normal': !isActive,
+            }
+          )}
+          style={{ color: isActive ? activeTextColor : undefined }}
         >
           {label}
         </span>
-      </div>
-    </div>
+      )}
+    </Link>
   );
 };
 

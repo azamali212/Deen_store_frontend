@@ -1,30 +1,46 @@
-"use client";
-import React, { useState } from 'react';
-import Navbar from '@/components/layout/Navbar/Navbar';
-import Sidebar from '@/components/layout/Sidebar/Sidebar';
+'use client';
+
+import React, { useState,useEffect } from 'react';
+import Navbar from '@/components/layout/Navbar/Navbar';  // Navbar Component
+import Sidebar from '@/components/layout/Sidebar/Sidebar'; // Sidebar Component
 import { DashboardLayoutProps } from '@/types/ui';
+import { applySavedTheme } from '@/utility/theme';
+
+const SIDEBAR_WIDTH = 250; // Sidebar width
+const NAVBAR_HEIGHT = 64; // Navbar height
 
 const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
-  const [collapsed, setCollapsed] = useState(false); // Manage the sidebar collapse state
-  const toggleSidebar = () => {
-    setCollapsed(!collapsed);
-  };
+  const [collapsed, setCollapsed] = useState(false);
+
+  const toggleSidebar = () => setCollapsed(!collapsed);
+
+  useEffect(() => {
+    applySavedTheme();
+  }, []);
+
 
   return (
-    <div className="flex h-screen overflow-hidden justify-center"> {/* Center the entire layout */}
-      {/* Sidebar on the left */}
-      <Sidebar />
+    <div className="flex h-screen">
+      <Sidebar collapsed={collapsed} setCollapsed={setCollapsed} />
 
-      {/* Main Content */}
-      <main className="flex-1 h-screen overflow-y-auto"> {/* Ensure the content takes up full height and has scrollbar on the right */}
-        {/* Navbar */}
-        <Navbar collapsed={collapsed} toggleSidebar={toggleSidebar}/>
-
-        {/* Page Content */}
-        <div className="p-4-5" >
-          {children} {/* Add padding for content */}
-        </div>
-      </main>
+      <div
+        className="flex-1 transition-all duration-500 ease-in-out"
+        style={{
+          marginLeft: collapsed ? '80px' : `${SIDEBAR_WIDTH}px`, // Adjust margin for animation
+          paddingTop: `${NAVBAR_HEIGHT}px`,
+        }}
+      >
+        <Navbar collapsed={collapsed} toggleSidebar={toggleSidebar} />
+        
+        <main
+          className="p-4"
+          style={{
+            minHeight: `calc(100vh - ${NAVBAR_HEIGHT}px)`,
+          }}
+        >
+          {children}
+        </main>
+      </div>
     </div>
   );
 };

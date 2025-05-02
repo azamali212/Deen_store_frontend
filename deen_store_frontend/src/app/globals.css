@@ -1,35 +1,26 @@
 @import "tailwindcss";
 
-/* styles/globals.css */
-:root {
-  /* Light Mode Variables */
-  --background: #f5f7fa; /* Very soft light gray (not pure white, more premium) */
-  --foreground: #1e293b; /* Elegant dark slate text color */
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
 
-/* Dark mode variables */
-@media (prefers-color-scheme: dark) {
+@layer base {
   :root {
-    --background: #eff9ff; /* Rich deep dark blue-gray */
-    --foreground: #e2e8f0; /* Soft light gray for text */
-    transition: background-color 0.3s ease, color 0.3s ease;
+    --background: 255 255 255;
+    --foreground: 0 0 0;
+    --accent: 59 130 246;
+  }
+
+  .dark {
+    --background: 17 24 39;
+    --foreground: 243 244 246;
+    --accent: 96 165 250;
+  }
+
+  .neon {
+    --background: 15 23 42;
+    --foreground: 0 255 157;
+    --accent: 0 255 157;
   }
 }
 
-/* Apply background and text color to the entire body */
 body {
-  background-color: var(--background);
-  color: var(--foreground);
-  font-family: var(--font-sans), Arial, Helvetica, sans-serif;
-}
-
-/* Example extra classes if needed */
-.text-body {
-  @apply text-gray-600;
-}
-
-.text-heading {
-  @apply text-gray-800;
+  @apply bg-[rgb(var(--background))] text-[rgb(var(--foreground))] transition-colors duration-200;
 }

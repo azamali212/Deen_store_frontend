@@ -12,9 +12,13 @@ export const Colors = {
     SIDEBAR_BG: "#f7f7f7",
     SIDEBAR_TEXT: "#333333",
     GRAY_LIGHT: "#d3d3d3",  // Add GRAY_LIGHT here
+    NAVBAR:"#d5bdab",
     gray: {
       300: "#d3d3d3",
       500: "#a0a0a0",
       700: "#707070",
     },
+    ACTIVE: "#d4bba9",
+    ACTIVETEXT: "#fff",
+
   };

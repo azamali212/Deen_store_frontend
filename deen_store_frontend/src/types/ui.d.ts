@@ -91,23 +91,29 @@ export type StyleType = 'primary' | 'light' | 'dark' | 'accent';
 
 
 interface SidebarItemProps {
-  icon: ReactNode;
   label: string;
   collapsed: boolean;
-  icon: ReactElement;
-
+  icon: React.ReactElement<{ 
+    size?: number;
+    strokeWidth?: number;
+    className?: string;
+  }>;
+  showTooltip?: boolean;
+  href?: string;
+  activeClass
 }
 
-
 interface DropDownProps {
-  icon: ReactElement; // <-- change this from ReactNode
+  icon: React.ReactElement<{ size?: number; strokeWidth?: number } & React.SVGProps<SVGSVGElement>>; // Allow size and strokeWidth
   label: string;
   collapsed: boolean;
   items: {
     label: string;
     href: string;
   }[];
-
+  variant?: 'sidebar' | 'navbar';
+  label?: string;
+  showTooltip?: boolean;
 }
 
 interface DashboardLayoutProps {
@@ -119,7 +125,36 @@ interface NavbarItemProps {
   icon: React.ReactNode;
   onClick: () => void;
 }
+
 interface SidebarProps {
-  collapsed: boolean;  // Expect the collapsed prop
-  setCollapsed: React.Dispatch<React.SetStateAction<boolean>>;  // Expect the setCollapsed function
+  collapsed: boolean;
+  setCollapsed: React.Dispatch<React.SetStateAction<boolean>>;
+}
+
+interface TooltipProps {
+  children: ReactElement<{
+    onMouseEnter?: (e: MouseEvent) => void;
+    onMouseLeave?: (e: MouseEvent) => void;
+    onFocus?: (e: FocusEvent) => void;
+    onBlur?: (e: FocusEvent) => void;
+  }>;
+  content: string;
+  side?: 'top' | 'right' | 'bottom' | 'left';
+  disabled?: boolean;
+}
+
+interface SidebarDropdownProps {
+  icon: React.ReactNode;
+  label: string;
+  collapsed: boolean;
+  items: { label: string; href: string }[];
+  icon: React.ReactElement<{ size?: number; strokeWidth?: number } & React.SVGProps<SVGSVGElement>>; 
+}
+
+interface DashboardProps {
+  isSidebarCollapsed: boolean;
+}
+
+interface BreadcrumbProps {
+  items: BreadcrumbItem[];
 }
