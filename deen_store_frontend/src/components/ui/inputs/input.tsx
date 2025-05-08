@@ -1,3 +1,4 @@
+"use client"
 import { Colors } from '@/constants/colors'
 import { InputProps } from '@/types/ui'
 import React from 'react'

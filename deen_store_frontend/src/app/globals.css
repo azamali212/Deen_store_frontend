@@ -1,26 +1,171 @@
 @import "tailwindcss";
 
-
 @layer base {
   :root {
     --background: 255 255 255;
+    --background-light: 237, 242, 248;
     --foreground: 0 0 0;
-    --accent: 59 130 246;
+    --accent: 212 187 169;
+    --card: 245 245 245;
+    --muted: 100 116 139;
+    --text-color: 35 39 42;
+    --breadcrumb--color: 255, 255, 255;
+    --dashboard--background:255,255,255;
+    --main--chart--card--background:234, 234, 234;
+    --table--color: 234, 234, 234;
+
+    /* Font sizes */
+    --font-size-base: 16px;
+    --font-size-sm: 14px;
+    --font-size-lg: 18px;
+    --font-size-xl: 20px;
+
+    /* New background variants */
+    --card-admin: 247 234 230;
+    --card-customer: 229 237 249;
+    --card-product: 238 232 250;
+    --card-order: 229 237 249;
+    --card-stock: 247 234 230;
+   
+
+    --nav:30, 41, 56;
+
+    --progress-admin: 212 187 169;
+    --progress-customer: 34 197 94;
+    --progress-product: 132 204 22;
+    --progress-order: 59 130 246;
+    --progress-stock: 239 68 68;
   }
 
   .dark {
     --background: 17 24 39;
+    --background-light: 17 24 39;
     --foreground: 243 244 246;
-    --accent: 96 165 250;
+    --card: 30 41 59;
+    --muted: 212 187 169;
+    --text-color: 244 114 182;
+    --nav:30, 41, 56;
+    --dashboard--background:17 24 39;
+    --main--chart--card--background:255, 250, 250;
+    --table--color: 255, 250, 250;
+
+    --card-admin: 60 40 40;
+    --card-customer: 40 50 60;
+    --card-product: 70 60 80;
+    --card-order: 40 50 70;
+    --card-stock: 60 45 45;
+    --breadcrumb--color: 17, 24, 39;
+
+    --progress-admin: 212 187 169;
+    --progress-customer: 34 197 94;
+    --progress-product: 190 242 100;
+    --progress-order: 147 197 253;
+    --progress-stock: 252 165 165;
   }
 
   .neon {
-    --background: 15 23 42;
-    --foreground: 0 255 157;
-    --accent: 0 255 157;
+    --background: 10 15 25;
+    --background-light: 10 15 25;
+    --foreground: 212 187 169;
+    --accent: 186 146 255;
+    --card: 20 29 45;
+    --muted: 255 221 157;
+    --text-color: 0 255 191;
+    --nav:30, 41, 56;
+    --breadcrumb--color:  10, 15, 25;
+    --dashboard--background: 10 15 25;
+    --main--chart--card--background:255, 250, 250;
+    --table--color: 255, 250, 250;
+   
+
+    --card-admin: 50 35 30;
+    --card-customer: 30 45 55;
+    --card-product: 60 50 80;
+    --card-order: 30 50 80;
+    --card-stock: 60 40 40;
+
+    --progress-admin: 255 221 157;
+    --progress-customer: 0 255 191;
+    --progress-product: 190 242 100;
+    --progress-order: 147 197 253;
+    --progress-stock: 255 82 82;
   }
+}
+
+@layer utilities {
+  .animate-fade-in {
+    animation: fadeIn 0.6s ease-in-out;
+  }
+
+  .animate-slide-in {
+    animation: slideIn 0.6s ease-out;
+  }
+
+  @keyframes fadeIn {
+    0% { opacity: 0 }
+    100% { opacity: 1 }
+  }
+
+  @keyframes slideIn {
+    0% {
+      transform: translateY(20px);
+      opacity: 0;
+    }
+    100% {
+      transform: translateY(0);
+      opacity: 1;
+    }
+  }
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+/* Hide scrollbar for IE, Edge and Firefox */
+.no-scrollbar {
+  -ms-overflow-style: none;  /* IE and Edge */
+  scrollbar-width: none;  /* Firefox */
 }
 
 body {
   @apply bg-[rgb(var(--background))] text-[rgb(var(--foreground))] transition-colors duration-200;
+  font-size: var(--font-size-base);
+}
+
+h1, h2, h3, h4, h5, h6 {
+  @apply font-semibold leading-tight tracking-tight text-[rgb(var(--foreground))];
+}
+
+h1 {
+  font-size: var(--font-size-xl);
+}
+
+h2 {
+  font-size: var(--font-size-lg);
+}
+
+p {
+  font-size: var(--font-size-sm);
+}
+
+a {
+  @apply text-[rgb(var(--accent))] duration-200;
+}
+
+/* Set color to red for a-sidebar */
+.a-sidebar {
+  @apply text-white duration-200;
+}
+
+.card {
+  @apply bg-[rgb(var(--card))] border border-[rgb(var(--foreground))]/10 rounded-xl shadow-sm p-6;
+}
+
+.nav {
+  @apply bg-[rgb(var(--nav))] border border-[rgb(var(--foreground))]/10 rounded-xl shadow-sm;
+}
+
+.muted-text {
+  @apply text-[rgb(var(--muted))];
 }

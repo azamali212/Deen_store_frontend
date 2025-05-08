@@ -23,12 +23,33 @@ export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElemen
 
 //Card
 export interface CardProps {
-  children: React.ReactNode;
+  children?: React.ReactNode; //? this sign use only for optional or not a null same like that 
   className?: string;
   title?: string;
   styleType?: StyleType;
   style?: React.CSSProperties;
-  variant?: 'admin' | 'customer' | "sidebar";
+  variant?: string;
+  content?: React.ReactNode;
+}
+
+//Chart
+export interface ChartProps {
+  type: 'pie' | 'doughnut' | 'line' | 'bar';  // Added line and bar here
+  data: any;
+  options?: any;
+  width?: number;
+  height?: number;
+}
+
+export interface MobileLayoutProps {
+  children: React.ReactNode;
+  className?: string;
+}
+//Table
+export interface TableProps {
+  headers: string[];
+  data: Array<Record<string, any>>;
+  title?: string;
 }
 
 interface LogoProps {
@@ -157,4 +178,20 @@ interface DashboardProps {
 
 interface BreadcrumbProps {
   items: BreadcrumbItem[];
+}
+
+interface ProgressProps {
+  value?: number;
+  max ?: number;
+  showLabel?: boolean;
+  color? : string;
+  className?: string;
+  title?: string;
+}
+
+interface BarProps{
+  data: any;
+  options?: any;
+  width?: number;
+  height?: number;
 }

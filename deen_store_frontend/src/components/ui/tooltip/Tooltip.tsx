@@ -1,4 +1,3 @@
-// components/ui/tooltip.tsx
 "use client";
 import { TooltipProps } from '@/types/ui';
 import React, { useState } from 'react';

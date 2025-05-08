@@ -30,7 +30,7 @@ const SidebarDropdown: React.FC<SidebarDropdownProps> = ({ icon, label, collapse
         ${isActive ? 'bg-gray-100 dark:bg-gray-700 font-semibold' : ''} 
         ${collapsed ? 'justify-center' : ''}`}
             >
-                <div className={`flex items-center ${collapsed ? 'justify-center w-full' : ''}`}>
+                <div className={`flex items-center  ${collapsed ? 'justify-center w-full' : ''}`}>
                     <span className="text-gray-500 dark:text-gray-400">
                         {React.isValidElement(icon)
                             ? React.cloneElement(icon, {
@@ -62,9 +62,9 @@ const SidebarDropdown: React.FC<SidebarDropdownProps> = ({ icon, label, collapse
                                 <li key={item.label}>
                                     <a
                                         href={item.href}
-                                        className={`block px-2 py-1 rounded transition-colors ${isItemActive
-                                                ? 'bg-blue-100 text-blue-600 dark:bg-blue-900 dark:text-white font-semibold'
-                                                : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+                                        className={`block px-2 py-1 rounded transition-colors a-sidebar ${isItemActive
+                                            ? 'bg-blue-100 text-blue-600 dark:bg-blue-900 dark:text-white font-semibold'
+                                            : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
                                             }`}
                                     >
                                         {item.label}

@@ -1,4 +1,5 @@
-import React from 'react';
+"use client";
+import React, { useEffect } from 'react';
 import { SidebarProps } from '@/types/ui';
 import {
   LayoutDashboard,
@@ -12,8 +13,13 @@ import {
 } from 'lucide-react';
 import SidebarItem from './SidebarItem';
 import SidebarDropdown from '@/components/ui/dropdown/SidebarDropdown';
+import { applySavedTheme } from '@/utility/theme';
+
 
 const Sidebar: React.FC<SidebarProps> = ({ collapsed, setCollapsed }) => {
+  useEffect(() => {
+    applySavedTheme();
+  }, []);
   return (
     <aside
       className={`fixed top-0 left-0 z-40 h-screen transition-all duration-300 bg-white border-r dark:bg-gray-800 dark:border-gray-700 pt-16 ${collapsed ? 'w-20' : 'w-64'
@@ -23,7 +29,7 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed, setCollapsed }) => {
         borderRight: '1px solid rgba(255, 255, 255, 0.15)',
       }}
     >
-      <nav className={`h-full p-2 px-3 pb-4 pt-2 overflow-y-auto scrollbar-hidden ${collapsed ? 'pt-15' : 'pt-2'}`}>
+      <nav className={`h-full p-2 px-3 pb-4 pt-4 overflow-y-auto scrollbar-hidden ${collapsed ? 'pt-15' : 'pt-2'}`}>
         <div className="flex flex-col space-y-1">
           <SidebarItem
             icon={<LayoutDashboard />}
@@ -32,7 +38,7 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed, setCollapsed }) => {
             collapsed={collapsed}
             activeClass="bg-blue-500 text-white dark:bg-blue-700 dark:text-white"
           />
-          
+
           <SidebarDropdown
             icon={<ShoppingBag />}
             label="Products"

@@ -1,4 +1,7 @@
-module.exports = {
+import type { Config } from 'tailwindcss';
+import plugin from 'tailwindcss/plugin';
+
+const config: Config = {
   darkMode: 'class',
   content: [
     './pages/**/*.{js,ts,jsx,tsx}',
@@ -23,8 +26,20 @@ module.exports = {
           dark: '#60a5fa',
           neon: '#00ff9d',
         },
+        neon: {
+          text: '#00ff9d',
+          active: '#00ffaa',
+          link: '#0ff',
+          separator: '#88ffee',
+        }
       },
     },
   },
-  plugins: [],
-}
+  plugins: [
+    plugin(function ({ addVariant }) {
+      addVariant('theme-neon', '.neon &');
+    }),
+  ],
+};
+
+export default config;

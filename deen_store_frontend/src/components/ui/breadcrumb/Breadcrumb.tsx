@@ -1,27 +1,32 @@
+"use client";
+
 import React from 'react';
 import Link from 'next/link';
 import { BreadcrumbProps } from '@/types/ui';
 
-interface BreadcrumbItem {
-  label: string;
-  href: string;
-  active?: boolean;
-}
-
 const Breadcrumb: React.FC<BreadcrumbProps> = ({ items }) => {
   return (
-    <nav className="text-sm text-gray-500">
+    <nav className="sticky text-sm">
       <ol className="flex space-x-2">
         {items.map((item, index) => (
           <li key={index} className="flex items-center">
             {item.active ? (
-              <span className="text-gray-700 font-semibold">{item.label}</span>
+              <span className="font-semibold text-[rgb(var(--foreground))]">
+                {item.label}
+              </span>
             ) : (
-              <Link href={item.href} className="hover:underline">
+              <Link
+                href={item.href}
+                className="text-muted-foreground hover:text-primary active:text-primary/80 transition-colors duration-200"
+              >
                 {item.label}
               </Link>
             )}
-            {index < items.length - 1 && <span className="mx-2">{">"}</span>}
+            {index < items.length - 1 && (
+              <span className="mx-2 text-[rgb(var(--foreground))]">
+                {'>'}
+              </span>
+            )}
           </li>
         ))}
       </ol>

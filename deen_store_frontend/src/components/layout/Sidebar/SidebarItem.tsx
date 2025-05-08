@@ -40,6 +40,7 @@ const SidebarItem: React.FC<SidebarItemProps> = ({
       className={clsx(
         'flex items-center rounded-lg transition-colors duration-200',
         'h-10',
+        'a-sidebar', // Added the a-sidebar class
         {
           'w-10 justify-center mx-auto': collapsed,
           'w-full px-3': !collapsed,

@@ -1,3 +1,4 @@
+"use client";
 import React, { useState, useEffect } from 'react';
 import { Bell, User2Icon, UserCircle, Moon, Sun, Zap } from 'lucide-react';
 import Button from '@/components/ui/buttons/button';
@@ -58,7 +59,7 @@ const Navbar = ({
 
     return (
         <nav
-            className="fixed top-0 z-50 border-b border-gray-200 dark:border-gray-700 transition-all duration-300"
+            className="fixed top-0 z-50 bg-[rgb(var(--nav))] border-b border-gray-200 dark:border-gray-700 transition-all duration-300"
             style={{
                 left: 0,
                 width: '100%',
@@ -107,19 +108,22 @@ const Navbar = ({
 
                 {/* Right Section */}
                 <div className="hidden sm:flex items-center">
-                    <button
+                    <Button
                         onClick={handleToggleTheme}
                         className="p-2 rounded-full text-gray-700 dark:text-gray-200 neon:text-neon-500 hover:bg-gray-100 dark:hover:bg-gray-700 neon:hover:bg-neon-800"
                         aria-label="Toggle theme"
+                        style={{}}
                     >
+                        
+                        
                         {theme === 'dark' ? (
-                            <Sun size={20} />
+                            <Sun size={20} color='#d5bdab'/>
                         ) : theme === 'neon' ? (
-                            <Zap size={20} />
+                            <Zap size={20} color='#d5bdab'/>
                         ) : (
-                            <Moon size={20} />
+                            <Moon size={20} color='#d5bdab'/>
                         )}
-                    </button>
+                    </Button>
                     {/* Notification Dropdown */}
                     <DropDown
                         icon={<Bell size={20} color="#d5bdab" />}
