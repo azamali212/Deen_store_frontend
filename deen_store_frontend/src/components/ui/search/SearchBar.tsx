@@ -3,19 +3,22 @@
 import React, { useState } from 'react';
 import Input from '../inputs/input';
 
-
-
-
-const SearchBar: React.FC = () => {
+type SearchBarProps = {
+    onSearch: (query: string) => void;
+    className?: string; // 👈 Add this
+  };
+  const SearchBar: React.FC<SearchBarProps> = ({ onSearch, className }) => {
     const [query, setQuery] = useState('');
 
     const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        setQuery(e.target.value);
+        const value = e.target.value;
+        setQuery(value);
+        onSearch(value);
     };
 
     const handleSearchSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-        console.log("Searching for:", query);
+        onSearch(query);
     };
 
     return (

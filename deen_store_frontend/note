@@ -70,3 +70,30 @@
 │   └── permission.ts                    # Define roles & permission types
 
 /middleware.ts                            # RBAC or auth redirect logic
+
+
+
+src/
+├─ store/
+│   └─ index.js               ← createStore() and combineReducers()
+├─ features/
+│   └─ cart/
+│       ├─ cartSlice.js       ← Redux slice for cart
+│       └─ cartSelectors.js   ← Optional: selectors for cart state
+│   └─ user/
+│       ├─ userSlice.js       ← Redux slice for user
+│       └─ userSelectors.js
+├─ hooks/
+│   └─ useCart.js             ← Custom hook using useSelector/useDispatch
+│   └─ useUser.js
+├─ services/
+│   └─ api.js                 ← Axios instance, API calls
+├─ context/
+│   └─ ReduxProvider.js       ← Wraps Redux store for app
+├─ lib/
+│   └─ utils.js               ← General utilities
+
+
+
+
+

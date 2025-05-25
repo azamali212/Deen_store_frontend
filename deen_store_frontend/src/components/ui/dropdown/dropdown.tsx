@@ -9,7 +9,7 @@ const DropDown: React.FC<DropDownProps> = ({
   label,
   collapsed,
   items,
-  variant = 'sidebar'
+  variant = 'sidebar',
 }) => {
   const [open, setOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -30,7 +30,7 @@ const DropDown: React.FC<DropDownProps> = ({
 
   const toggleDropdown = () => {
     if (variant === 'navbar' || !collapsed) {
-      setOpen(prev => !prev);
+      setOpen((prev) => !prev);
     }
   };
 
@@ -51,21 +51,32 @@ const DropDown: React.FC<DropDownProps> = ({
           }`}
         >
           <div className="py-2">
-            {items.map((item, idx) => (
-              <Link
-                key={idx}
-                href={item.href}
-                className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition"
-              >
-                {item.label}
-              </Link>
-            ))}
+            {items.map((item, idx) =>
+              item.onClick ? (
+                <button
+                  key={idx}
+                  onClick={item.onClick}
+                  className="w-full text-left block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition"
+                >
+                  {item.label}
+                </button>
+              ) : (
+                <Link
+                  key={idx}
+                  href={item.href || '#'}
+                  className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition"
+                >
+                  {item.label}
+                </Link>
+              )
+            )}
           </div>
         </div>
       </div>
     );
   }
 
+  // Sidebar variant
   return (
     <div className="transition-all duration-200 ease-linear">
       <div
@@ -98,21 +109,27 @@ const DropDown: React.FC<DropDownProps> = ({
         )}
       </div>
 
-      {!collapsed && (
-        <div
-          className={`ml-8 space-y-1 transition-all duration-300 ease-linear overflow-hidden ${
-            open ? 'max-h-[500px] mt-2' : 'max-h-0'
-          }`}
-        >
-          {items.map((item, idx) => (
-            <a
-              key={idx}
-              href={item.href}
-              className="block text-sm text-gray-600 dark:text-gray-400 hover:text-blue-600 transition-colors duration-200 py-1"
-            >
-              {item.label}
-            </a>
-          ))}
+      {!collapsed && open && (
+        <div className="ml-8 space-y-1 transition-all duration-300 ease-linear overflow-hidden">
+          {items.map((item, idx) =>
+            item.onClick ? (
+              <button
+                key={idx}
+                onClick={item.onClick}
+                className="block w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-white hover:bg-gray-200 dark:hover:bg-gray-700 rounded-md transition"
+              >
+                {item.label}
+              </button>
+            ) : (
+              <Link
+                key={idx}
+                href={item.href || '#'}
+                className="block px-4 py-2 text-sm text-gray-700 dark:text-white hover:bg-gray-200 dark:hover:bg-gray-700 rounded-md transition"
+              >
+                {item.label}
+              </Link>
+            )
+          )}
         </div>
       )}
     </div>

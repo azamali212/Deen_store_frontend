@@ -13,6 +13,7 @@ const variantClasses: Record<string, string> = {
     order: 'bg-[rgb(var(--card-order))] text-theme',
     stock: 'bg-[rgb(var(--card-stock))] text-theme',
     chart:'bg-[rgb(var(--main--chart--card--background))] text-theme',
+    spirit: 'bg-gradient-to-r from-purple-400 via-pink-500 to-red-500 text-white shadow-lg',
 };
 
 const progressColorMap: Record<string, string> = {

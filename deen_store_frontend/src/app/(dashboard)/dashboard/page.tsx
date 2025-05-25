@@ -7,10 +7,38 @@ import Progress from '@/components/ProgressBar/Progress';
 import Bar from '@/components/Chart/Bar';
 import Table from '@/components/ui/table/Table';
 import SampleTable from '@/components/Static/TableData';
+import CombinationChart from '@/components/Chart/Combination';
+import classNames from 'classnames';
+import BestSellingTable from '@/components/Static/BestSellingPorductData';
 
 const Dashboard: FC<DashboardProps> = ({ isSidebarCollapsed }) => {
+  const vendorData = [65, 59, 80, 81, 56, 55, 40];
+  const customerData = [45, 60, 70, 45, 40, 56, 65];
+  const labels = ['January', 'February', 'March', 'April', 'May', 'June', 'July'];
+  const tableHeaders = ['Vendor', 'Sales', 'Customer', 'Feedback']; // Example headers for the table
+  const tableData = [
+    { vendor: 'Vendor 1', sales: 1000, customer: 'Customer 1', feedback: 'Success' },
+    { vendor: 'Vendor 2', sales: 2000, customer: 'Customer 2', feedback: 'Success' },
+    { vendor: 'Vendor 2', sales: 2000, customer: 'Customer 2', feedback: 'Success' },
+    { vendor: 'Vendor 2', sales: 2000, customer: 'Customer 2', feedback: 'Success' },
+    { vendor: 'Vendor 2', sales: 2000, customer: 'Customer 2', feedback: 'Success' },
+    { vendor: 'Vendor 1', sales: 1000, customer: 'Customer 1', feedback: 'Success' },
+    { vendor: 'Vendor 2', sales: 2000, customer: 'Customer 2', feedback: 'Success' },
+    { vendor: 'Vendor 2', sales: 2000, customer: 'Customer 2', feedback: 'Success' },
+    { vendor: 'Vendor 2', sales: 2000, customer: 'Customer 2', feedback: 'Success' },
+    { vendor: 'Vendor 2', sales: 2000, customer: 'Customer 2', feedback: 'Success' },
+    { vendor: 'Vendor 1', sales: 1000, customer: 'Customer 1', feedback: 'Success' },
+    { vendor: 'Vendor 2', sales: 2000, customer: 'Customer 2', feedback: 'Success' },
+    { vendor: 'Vendor 2', sales: 2000, customer: 'Customer 2', feedback: 'Success' },
+    { vendor: 'Vendor 2', sales: 2000, customer: 'Customer 2', feedback: 'Success' },
+    { vendor: 'Vendor 2', sales: 2000, customer: 'Customer 2', feedback: 'Success' },
+    // Add more rows as per your need
+  ];
+
+ 
   const chartData = {
     labels: ['January', 'February', 'March', 'April'],
+
     datasets: [
       {
         label: 'Sales',
@@ -25,7 +53,7 @@ const Dashboard: FC<DashboardProps> = ({ isSidebarCollapsed }) => {
     <div
       style={{
         transform: isSidebarCollapsed ? 'translateX(-140px)' : 'translateX(0)',
-        transition: 'transform 0.5s ease-in-out',
+        transition: 'transform 0.2s ease-in-out',
       }}
       className="p-2 space-y-6"
     >
@@ -106,10 +134,44 @@ const Dashboard: FC<DashboardProps> = ({ isSidebarCollapsed }) => {
 
       <div className="w-full p-6 bg-[rgb(var(--dashboard--background))] rounded-2xl shadow-sm">
         <div>
-        <SampleTable />
+          <SampleTable />
+        </div>
+      </div>
+      <div className="w-full h-full p-6 bg-[rgb(var(--dashboard--background))] rounded-2xl shadow-sm">
+        <div className="flex justify-between gap-6">
+          {/* Chart Section */}
+          <div className="flex-1">
+            <Card variant="chart" className='h-full'>
+              <CombinationChart
+                vendorData={vendorData}
+                customerData={customerData}
+                labels={labels}
+                chartTitle="Vendor vs Customer Performance"
+
+              />
+            </Card>
+          </div>
+
+          {/* Table Section */}
+          <div className="flex-1">
+
+            <Table
+              title="Vendor & Customer Table"
+              headers={tableHeaders}
+              data={tableData}
+            />
+
+          </div>
         </div>
       </div>
 
+      <div className="w-full p-6 bg-[rgb(var(--dashboard--background))] rounded-2xl shadow-sm">
+        <div className="flex justify-between gap-6">
+          <div className="flex-1">
+            <BestSellingTable />
+          </div>
+        </div>
+      </div>
     </div>
   );
 };

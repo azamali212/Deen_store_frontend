@@ -1,21 +1,26 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { usePathname } from 'next/navigation'; // Updated import
+import { usePathname } from 'next/navigation';
 import { SidebarItemProps } from '@/types/ui';
 import clsx from 'clsx';
-import { Colors } from '@/constants/colors';
 import Link from 'next/link';
 
-const SidebarItem: React.FC<SidebarItemProps> = ({ 
-  icon, 
-  label, 
-  href = '/', 
-  collapsed = false, 
-  activeClass 
+const SidebarItem: React.FC<SidebarItemProps & {
+  onClick?: (e: React.MouseEvent) => void;
+  onMouseEnter?: (e: React.MouseEvent) => void;
+  isActive?: boolean;
+}> = ({
+  icon,
+  label,
+  href = '/',
+  collapsed = false,
+  onClick,
+  onMouseEnter,
+  isActive = false
 }) => {
   const [mounted, setMounted] = useState(false);
-  const pathname = usePathname(); // Using usePathname instead of useRouter
+  const pathname = usePathname();
 
   useEffect(() => {
     setMounted(true);
@@ -30,63 +35,48 @@ const SidebarItem: React.FC<SidebarItemProps> = ({
     );
   }
 
-  const isActive = pathname === href;
-  const activeColor = Colors.ACTIVE;
-  const activeTextColor = Colors.ACTIVETEXT;
+  const isLinkActive = pathname === href;
+  const showAsActive = isLinkActive || isActive;
 
-  return (
-    <Link
-      href={href}
+  const activeStyles = 'bg-[rgb(var(--sidebar-active-bg))] text-[rgb(var(--sidebar-active-text))] font-semibold';
+  const inactiveStyles = 'text-[rgb(var(--sidebar-text))] hover:bg-[rgb(var(--sidebar-hover-bg))]';
+
+  const content = (
+    <div
+      onClick={onClick}
+      onMouseEnter={onMouseEnter}
       className={clsx(
-        'flex items-center rounded-lg transition-colors duration-200',
-        'h-10',
-        'a-sidebar', // Added the a-sidebar class
-        {
-          'w-10 justify-center mx-auto': collapsed,
-          'w-full px-3': !collapsed,
-          [`text-[${activeTextColor}]`]: isActive,
-          [`bg-[${activeColor}]`]: isActive,
-          'text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700': !isActive,
-        }
+        'flex items-center rounded-lg transition-colors duration-200 h-10 w-full cursor-pointer text-sm',
+        collapsed ? 'w-10 justify-center mx-auto' : 'w-full px-3',
+        showAsActive ? activeStyles : inactiveStyles
       )}
-      style={{ backgroundColor: isActive ? activeColor : undefined }}
     >
-      {/* Icon container */}
-      <div
-        className={clsx(
-          'flex items-center justify-center',
-          'w-6 h-6',
-          {
-            'text-white dark:text-white': isActive,
-            'text-gray-500 dark:text-gray-400': !isActive,
-          }
-        )}
-        style={{ color: isActive ? activeTextColor : undefined }}
-      >
-        {React.isValidElement(icon) ? 
-          React.cloneElement(icon, {
-            size: 20,
-            strokeWidth: isActive ? 2 : 1.75,
-          }) : 
-          icon
-        }
+      <div className="flex items-center justify-center w-6 h-6">
+        {React.isValidElement(icon)
+          ? React.cloneElement(icon, {
+              size: 20,
+              strokeWidth: showAsActive ? 2 : 1.75,
+              className: showAsActive 
+                ? 'text-[rgb(var(--sidebar-active-text))]' 
+                : 'text-[rgb(var(--sidebar-text))]',
+            })
+          : icon}
       </div>
-
-      {/* Label - only shown when not collapsed */}
       {!collapsed && (
-        <span
-          className={clsx(
-            'ml-3 whitespace-nowrap',
-            {
-              'font-medium': isActive,
-              'font-normal': !isActive,
-            }
-          )}
-          style={{ color: isActive ? activeTextColor : undefined }}
-        >
+        <span className="ml-3 truncate">
           {label}
         </span>
       )}
+    </div>
+  );
+
+  if (onClick) {
+    return <button className="w-full">{content}</button>;
+  }
+
+  return (
+    <Link href={href} className="w-full">
+      {content}
     </Link>
   );
 };

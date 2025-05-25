@@ -12,7 +12,7 @@ const Login = () => {
   const [isMounted, setIsMounted] = useState(false);
 
   // Login states
-  const [emailOrPhone, setEmailOrPhone] = useState('');
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
 
@@ -32,8 +32,8 @@ const Login = () => {
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
-    console.log('Logging in with:', { emailOrPhone, password });
-    // router.push('/dashboard');
+    console.log('Logging in with:', { email, password });
+    router.push('/dashboard');
   };
 
   const openForgotPassword = () => {
@@ -88,8 +88,8 @@ const Login = () => {
     <div className="flex items-center justify-center min-h-screen px-4">
       <LoginForm
         variant="customer"
-        emailOrPhone={emailOrPhone}
-        setEmailOrPhone={setEmailOrPhone}
+        email={email}
+        setEmail={setEmail}
         password={password}
         setPassword={setPassword}
         showPassword={showPassword}

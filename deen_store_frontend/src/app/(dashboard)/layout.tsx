@@ -1,29 +1,104 @@
-"use client";
-import React, { useState, useEffect } from 'react';
+'use client';
+import React, { useState, useEffect, useRef } from 'react';
+import { usePathname } from 'next/navigation';
 import Navbar from '@/components/layout/Navbar/Navbar';
 import Sidebar from '@/components/layout/Sidebar/Sidebar';
 import { DashboardLayoutProps } from '@/types/ui';
 import { applySavedTheme } from '@/utility/theme';
 import Breadcrumb from '@/components/ui/breadcrumb/Breadcrumb';
+import NestedSidebar from '@/components/layout/Sidebar/NestedSidebar';
+import ROUTES from '@/constants/route.constant';
+import BREADCRUMB_CONFIG from '@/utility/breadcrumb.config';
 
 const SIDEBAR_WIDTH = 250;
+const SECONDARY_SIDEBAR_WIDTH = 220;
 const NAVBAR_HEIGHT = 64;
 
 const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
+  const pathname = usePathname();
   const [collapsed, setCollapsed] = useState(false);
+  const [secondarySidebarOpen, setSecondarySidebarOpen] = useState(false);
+  const [activeSidebarItem, setActiveSidebarItem] = useState<string | null>(null);
+  const nestedSidebarRef = useRef<HTMLDivElement>(null);
 
   const toggleSidebar = () => setCollapsed(!collapsed);
+  const toggleSecondarySidebar = (item: string | null) => {
+    setActiveSidebarItem(item);
+    setSecondarySidebarOpen(item !== null);
+  };
+  const handleMouseLeaveNested = () => toggleSecondarySidebar(null);
 
   useEffect(() => {
     applySavedTheme();
   }, []);
 
-  return (
-    <div className="flex h-full bg-[rgb(var(--background-light))]">
-      <Sidebar collapsed={collapsed} setCollapsed={setCollapsed} />
+  // ✅ Dynamically determine active breadcrumb
+  const matchedRoute = Object.entries(BREADCRUMB_CONFIG).find(([key]) =>
+    pathname.startsWith(key)
+  );
 
+  const breadcrumbItems = [
+    { label: 'Home', href: '/' },
+    matchedRoute
+      ? {
+          label: (
+            <>
+              Dashboard /{' '}
+              <span className="text-gray-500 font-semibold pb-0.5">
+                {matchedRoute[1].label}
+              </span>
+            </>
+          ),
+          href: matchedRoute[1].href,
+          active: true,
+        }
+      : {
+          label: (
+            <>
+              Dashboard /{' '}
+              <span className="text-gray-500 font-semibold pb-0.5">Unknown</span>
+            </>
+          ),
+          href: ROUTES.DASHBOARD,
+          active: true,
+        }
+  ];
+
+  return (
+    <div className="flex w-full h-full bg-[rgb(var(--background-light))] relative">
+      {/* Main Sidebar */}
+      <Sidebar
+        collapsed={collapsed}
+        setCollapsed={setCollapsed}
+        toggleSecondarySidebar={toggleSecondarySidebar}
+        activeSidebarItem={activeSidebarItem}
+      />
+
+      {/* Nested Sidebar */}
       <div
-        className="flex-1 transition-all duration-500 ease-in-out"
+        ref={nestedSidebarRef}
+        onMouseLeave={handleMouseLeaveNested}
+        className={`fixed top-0 z-40 h-full transition-all duration-300 ease-out overflow-hidden ${secondarySidebarOpen ? 'opacity-100' : 'opacity-0 w-0'
+          }`}
+        style={{
+          marginTop: `${NAVBAR_HEIGHT}px`,
+          left: collapsed ? '80px' : `${SIDEBAR_WIDTH}px`,
+          width: secondarySidebarOpen ? `${SECONDARY_SIDEBAR_WIDTH}px` : '0',
+          pointerEvents: secondarySidebarOpen ? 'auto' : 'none',
+        }}
+      >
+        {secondarySidebarOpen && (
+          <NestedSidebar
+            collapsed={collapsed}
+            activeItem={activeSidebarItem}
+            toggleSecondarySidebar={toggleSecondarySidebar}
+          />
+        )}
+      </div>
+
+      {/* Main Content Area */}
+      <div
+        className="flex-1 transition-all duration-300"
         style={{
           marginLeft: collapsed ? '80px' : `${SIDEBAR_WIDTH}px`,
           paddingTop: `${NAVBAR_HEIGHT}px`,
@@ -31,24 +106,17 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
       >
         <Navbar collapsed={collapsed} toggleSidebar={toggleSidebar} />
 
-        {/* Sticky Header with Breadcrumb */}
-        <div className="sticky top-[64px] w-full z-1 shadow-lg bg-[rgb(var(--breadcrumb--color))]">
+        <div className="w-full z-1 shadow-sm bg-[rgb(var(--breadcrumb--color))]">
           <div className="flex flex-col md:flex-row md:items-center md:justify-between p-4">
-            <div className="flex items-center space-x-4">
-              <Breadcrumb
-                items={[
-                  { label: 'Home', href: '/' },
-                  { label: 'Dashboard', href: '/dashboard', active: true },
-                ]}
-              />
-            </div>
+            <Breadcrumb items={breadcrumbItems} />
           </div>
         </div>
 
         <main
-          className="px-6 py-4"
+          className="px-6 py-4 transition-opacity duration-300"
           style={{
-            minHeight: `calc(100vh - ${NAVBAR_HEIGHT}px - 68px)`, // Account for navbar and header height
+            minHeight: `calc(100vh - ${NAVBAR_HEIGHT}px - 68px)`,
+            opacity: secondarySidebarOpen ? 0.7 : 1,
           }}
         >
           {children}

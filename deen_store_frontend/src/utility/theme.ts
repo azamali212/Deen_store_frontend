@@ -1,18 +1,7 @@
 export type Theme = 'light' | 'dark' | 'neon';
 
-export const toggleTheme = (): Theme => {
-  if (typeof window === 'undefined') return 'light';
-
-  const html = document.documentElement;
-  const current = getCurrentTheme();
-  const newTheme = getNextTheme(current);
-
-  html.classList.remove('light', 'dark', 'neon');
-  html.classList.add(newTheme);
-  localStorage.setItem('theme', newTheme);
-
-  return newTheme;
-};
+// Themes cycle order
+const themeOrder: Theme[] = ['light', 'dark', 'neon'];
 
 export const getCurrentTheme = (): Theme => {
   if (typeof window === 'undefined') return 'light';
@@ -23,25 +12,41 @@ export const getCurrentTheme = (): Theme => {
 };
 
 export const getNextTheme = (current: Theme): Theme => {
-  const themeOrder: Theme[] = ['light', 'dark', 'neon'];
   const currentIndex = themeOrder.indexOf(current);
   return themeOrder[(currentIndex + 1) % themeOrder.length];
 };
 
+export const setTheme = (theme: Theme): void => {
+  if (typeof window === 'undefined') return;
+
+  const html = document.documentElement;
+  html.classList.remove(...themeOrder);
+  html.classList.add(theme);
+  localStorage.setItem('theme', theme);
+};
+
+export const toggleTheme = (): Theme => {
+  if (typeof window === 'undefined') return 'light';
+
+  const current = getCurrentTheme();
+  const next = getNextTheme(current);
+  setTheme(next);
+  return next;
+};
+
+// Load theme from localStorage or fallback to system preference
 export const getInitialTheme = (): Theme => {
   if (typeof window === 'undefined') return 'light';
 
-  const savedTheme = localStorage.getItem('theme');
-  if (savedTheme && ['light', 'dark', 'neon'].includes(savedTheme)) {
-    return savedTheme as Theme;
-  }
+  const savedTheme = localStorage.getItem('theme') as Theme | null;
+  if (savedTheme && themeOrder.includes(savedTheme)) return savedTheme;
 
+  // fallback to system preference
   return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
 };
 
+// Apply saved or system theme on app start or logout - without resetting or forcing a theme
 export const applySavedTheme = (): void => {
   const theme = getInitialTheme();
-  document.documentElement.classList.remove('light', 'dark', 'neon');
-  document.documentElement.classList.add(theme);
+  setTheme(theme);
 };
-

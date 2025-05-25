@@ -26,7 +26,7 @@ const Button: React.FC<ExtendedButtonProps> = ({
   const variantClasses = {
     primary: `bg-[var(--primary)] text-[var(--text-light)] hover:bg-[var(--primary-hover)]`,
     text: 'bg-transparent p-0 hover:no-underline',
-    ghost: `bg-transparent border-[1px] border-[var(--gray-300)] text-[var(--text-light)]`
+    ghost: `bg-transparent border-[1px] border-[var(--gray-300)]`
   };
 
   const variantStyles = {
@@ -36,7 +36,6 @@ const Button: React.FC<ExtendedButtonProps> = ({
     },
     ghost: {
       backgroundColor: 'transparent',
-      color: 'var(--text-light)',
       border: `1px solid ${Colors.gray[300]}`,
     },
     text: {

@@ -19,6 +19,7 @@ export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElemen
   variant?: 'primary' | 'text' | 'ghost';
   className?: string;
   style?: React.CSSProperties;
+  size?: 'sm' | 'md' | 'lg';
 }
 
 //Card
@@ -93,12 +94,14 @@ interface ForgotPasswordModalProps {
   forgotPhone;
   setForgotPhone;
   onSelectMethod: (method: 'email' | 'phone') => void;
+  loading?: boolean; 
+  error?: string | null;
 }
 
 //Login Form
 interface LoginProps {
-  emailOrPhone: string;
-  setEmailOrPhone: (value: string) => void;
+  email: string;
+  setEmail: (value: string) => void;
   password: string;
   setPassword: (value: string) => void;
   showPassword: boolean;
@@ -106,12 +109,13 @@ interface LoginProps {
   handleLogin: (e: React.FormEvent) => void;
   openForgotPassword: () => void;
   variant?: 'customer' | 'admin';
+  error?: string | null;
 }
 
 export type StyleType = 'primary' | 'light' | 'dark' | 'accent';
 
 
-interface SidebarItemProps {
+export interface SidebarItemProps {
   label: string;
   collapsed: boolean;
   icon: React.ReactElement<{ 
@@ -121,38 +125,41 @@ interface SidebarItemProps {
   }>;
   showTooltip?: boolean;
   href?: string;
-  activeClass
+  activeClass?: string;
+  rightIcon?: React.ReactNode; 
 }
 
-interface DropDownProps {
-  icon: React.ReactElement<{ size?: number; strokeWidth?: number } & React.SVGProps<SVGSVGElement>>; // Allow size and strokeWidth
-  label: string;
-  collapsed: boolean;
-  items: {
-    label: string;
-    href: string;
-  }[];
-  variant?: 'sidebar' | 'navbar';
+export interface DropdownItem {
   label?: string;
+  href?: string;
+  onClick?: () => void;
+}
+
+export interface DropDownProps {
+  icon: React.ReactElement<{ size?: number; strokeWidth?: number } & React.SVGProps<SVGSVGElement>>;
+  label?: string;
+  collapsed: boolean;
+  items: DropdownItem[];
+  variant?: 'sidebar' | 'navbar';
   showTooltip?: boolean;
 }
 
-interface DashboardLayoutProps {
+export interface DashboardLayoutProps {
   children: ReactNode;
 }
 
-interface NavbarItemProps {
+export interface NavbarItemProps {
   label: string;
   icon: React.ReactNode;
   onClick: () => void;
 }
 
-interface SidebarProps {
+export interface SidebarProps {
   collapsed: boolean;
   setCollapsed: React.Dispatch<React.SetStateAction<boolean>>;
 }
 
-interface TooltipProps {
+export interface TooltipProps {
   children: ReactElement<{
     onMouseEnter?: (e: MouseEvent) => void;
     onMouseLeave?: (e: MouseEvent) => void;
@@ -164,23 +171,38 @@ interface TooltipProps {
   disabled?: boolean;
 }
 
-interface SidebarDropdownProps {
-  icon: React.ReactNode;
+
+
+export interface SidebarDropdownItem {
   label: string;
-  collapsed: boolean;
-  items: { label: string; href: string }[];
-  icon: React.ReactElement<{ size?: number; strokeWidth?: number } & React.SVGProps<SVGSVGElement>>; 
+  href: string;
+  icon?: React.ReactElement;
+  items?: SidebarDropdownItem[];
+  onMouseEnter?: () => void;
+  onClick?: () => void; 
 }
 
-interface DashboardProps {
+export interface SidebarDropdownProps {
+  icon: React.ReactElement<{ size?: number; strokeWidth?: number }>;
+  label: string;
+  collapsed: boolean;
+  items: SidebarDropdownItem[];
+  href?: string;
+  activeClass?: string;
+  onMouseEnter?: () => void;
+  isActive?: boolean;
+  onClick?: () => void;
+}
+
+export  interface DashboardProps {
   isSidebarCollapsed: boolean;
 }
 
-interface BreadcrumbProps {
+export interface BreadcrumbProps {
   items: BreadcrumbItem[];
 }
 
-interface ProgressProps {
+export interface ProgressProps {
   value?: number;
   max ?: number;
   showLabel?: boolean;
@@ -189,9 +211,121 @@ interface ProgressProps {
   title?: string;
 }
 
-interface BarProps{
+export interface BarProps{
   data: any;
   options?: any;
   width?: number;
   height?: number;
+}
+
+export interface PaginationProps {
+  totalPages: number;
+  currentPage: number;
+  onPageChange: (page: number) => void;
+  siblingCount?: number;
+}
+
+
+//For Redux
+export interface User {
+  id: number;
+  token?: string;
+  name: string;
+  email: string;
+  // add any more fields returned by backend
+}
+
+export interface LoginPayload {
+  email: string;
+  password: string;
+}
+
+export interface LoginResponse {
+  user: User;
+  token: string;
+}
+
+export interface ErrorResponse {
+  message: string;
+}
+
+export interface AuthState {
+  user: User | null;
+  token: string | null;
+  loading: boolean;
+  error: string | null;
+  successMessage: string | null;
+  isAuthenticated: boolean;
+}
+
+//ForgetPassword
+export interface ForgotPasswordPayload {
+  email: string;
+}
+
+export interface ResetPasswordPayload {
+  token: string;
+  email: string;
+  password: string;
+  password_confirmation: string;
+}
+
+//Role Interface
+export interface Role {
+  id: number;
+  name: string;
+  slug: string;
+  permissions?: string[];
+  users?: string[];
+  title?: string;
+  description?: string;
+  userCount?: number;
+  color?: string;
+}
+
+interface RoleData {
+  id: string;
+  title: RoleTitle;  // use your RoleTitle type here
+  description: string;
+  userCount: number;
+  color: string;
+}
+
+export interface RolePayload {
+  name: string;
+  slug?: string;
+}
+
+export interface RoleResponse {
+  role: Role;
+  message?: string;
+}
+
+export interface PermissionAttachPayload {
+  id: number;
+  permissions: string[];
+}
+
+export interface RoleUserAttachPayload {
+  id: number;
+  users: number[];
+}
+
+export interface RoleState {
+  roles: Role[];
+  selectedRole: Role | null;
+  loading: boolean;
+  error: string | null;
+  rolePermissions?: string[]; // add if needed
+  roleUsers?: number[]; // add if needed
+  successMessage: string | null;
+}
+
+export interface PaginatedRoleResponse {
+  current_page: number;
+  data: Role[];
+  total: number;
+  per_page: number;
+  last_page: number;
+  // add other pagination fields from your API response if needed
 }
