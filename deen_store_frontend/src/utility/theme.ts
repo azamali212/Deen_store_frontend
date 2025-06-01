@@ -50,3 +50,14 @@ export const applySavedTheme = (): void => {
   const theme = getInitialTheme();
   setTheme(theme);
 };
+
+export const applyTheme = (theme: string) => {
+  if (theme === 'system') {
+    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    document.documentElement.classList.toggle('dark', prefersDark);
+    localStorage.removeItem('theme');
+  } else {
+    document.documentElement.classList.toggle('dark', theme === 'dark');
+    localStorage.setItem('theme', theme);
+  }
+};

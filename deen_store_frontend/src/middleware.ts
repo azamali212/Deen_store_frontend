@@ -11,7 +11,7 @@ export function middleware(request: NextRequest) {
   }
 
   // Protect /dashboard and /role routes
-  const protectedPaths = ['/dashboard', '/role'];
+  const protectedPaths = ['/dashboard', '/role','/permissions'];
   const isProtected = protectedPaths.some(path => pathname.startsWith(path));
 
   if (isProtected && !token) {

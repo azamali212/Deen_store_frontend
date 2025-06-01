@@ -1,13 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import {
-  Bell,
-  User2Icon,
-  UserCircle,
-  Moon,
-  Sun,
-} from 'lucide-react';
+import { Bell, User2Icon, UserCircle, Moon, Sun } from 'lucide-react';
 import Button from '@/components/ui/buttons/button';
 import DropDown from '@/components/ui/dropdown/dropdown';
 import Image from 'next/image';
@@ -27,6 +21,17 @@ const Navbar = ({
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [isSearchModalOpen, setIsSearchModalOpen] = useState(false);
   const [theme, setTheme] = useState<'light' | 'dark'>('light');
+  const [isScrolled, setIsScrolled] = useState(false);
+
+  // Handle scroll effect
+  useEffect(() => {
+    const handleScroll = () => {
+      setIsScrolled(window.scrollY > 10);
+    };
+
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
 
   // Read theme from localStorage on mount
   useEffect(() => {
@@ -34,7 +39,6 @@ const Navbar = ({
     if (storedTheme === 'dark' || storedTheme === 'light') {
       setTheme(storedTheme);
     } else {
-      // If no theme stored, detect system preference
       const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
       setTheme(prefersDark ? 'dark' : 'light');
     }
@@ -57,7 +61,6 @@ const Navbar = ({
 
   const handleLogout = async () => {
     await dispatch(logout());
-    // Redirect after logout
     window.location.href = '/shopinity_admin_login';
   };
 
@@ -81,17 +84,20 @@ const Navbar = ({
 
   return (
     <nav
-      className="fixed top-0 z-50 bg-[rgb(var(--nav))] border-b border-gray-200 dark:border-gray-700 transition-all duration-300"
+      className="fixed top-0 z-50 border-b transition-all duration-300"
       style={{
         left: 0,
         width: '100%',
         height: '64px',
-        boxShadow: '0 2px 8px rgba(0, 0, 0, 0.2)',
-        borderBottom: '1px solid rgba(255, 255, 255, 0.15)',
+        backgroundColor: isScrolled ? 'rgb(var(--nav))' : 'transparent',
+        boxShadow: isScrolled ? '0 2px 8px rgba(0, 0, 0, 0.2)' : 'none',
+        borderBottom: isScrolled 
+          ? '1px solid rgba(255, 255, 255, 0.15)' 
+          : '1px solid transparent',
       }}
     >
       <div className="flex justify-between items-center h-full px-4 text-white">
-        {/* Left Section */}
+        {/* Left Section - No changes */}
         <div className="flex items-center space-x-4">
           <Button
             variant="ghost"
@@ -106,7 +112,7 @@ const Navbar = ({
           </div>
         </div>
 
-        {/* Search Bar - Desktop */}
+        {/* Search Bar - Desktop - No changes */}
         <div className="hidden md:block flex-1 max-w-sm mx-6">
           <div onClick={handleSearchClick} className="relative cursor-pointer w-full">
             <div className="flex items-center bg-white text-gray-600 rounded-full px-4 py-2 shadow-md hover:shadow-lg transition">
@@ -116,7 +122,7 @@ const Navbar = ({
           </div>
         </div>
 
-        {/* Search Icon - Mobile */}
+        {/* Search Icon - Mobile - No changes */}
         <div className="block md:hidden">
           <button
             onClick={handleSearchClick}
@@ -127,7 +133,7 @@ const Navbar = ({
           </button>
         </div>
 
-        {/* Right Section */}
+        {/* Right Section - No changes */}
         <div className="hidden sm:flex items-center">
           <Button
             onClick={handleToggleTheme}
@@ -171,7 +177,7 @@ const Navbar = ({
         </div>
       </div>
 
-      {/* Mobile Dropdown */}
+      {/* Mobile Dropdown - No changes */}
       <div
         className={`md:hidden bg-gray-900 text-white px-4 py-2 transform transition-transform duration-300 ease-out ${mobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}`}
       >
@@ -191,7 +197,7 @@ const Navbar = ({
         </div>
       </div>
 
-      {/* Search Modal */}
+      {/* Search Modal - No changes */}
       <Model
         isOpen={isSearchModalOpen}
         onClose={() => setIsSearchModalOpen(false)}

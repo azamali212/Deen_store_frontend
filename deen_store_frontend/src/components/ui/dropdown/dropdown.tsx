@@ -3,6 +3,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { ChevronDown, ChevronRight } from 'lucide-react';
 import Link from 'next/link';
 import { DropDownProps } from '@/types/ui';
+import { motion } from 'framer-motion';
 
 const DropDown: React.FC<DropDownProps> = ({
   icon,
@@ -39,24 +40,24 @@ const DropDown: React.FC<DropDownProps> = ({
       <div ref={dropdownRef} className="relative inline-block text-left">
         <button
           onClick={toggleDropdown}
-          className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white transition"
+          className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white hover:text-gray-200 transition-all duration-200 hover:bg-white/10 rounded-lg"
         >
           {icon}
-          {label && <span>{label}</span>}
+          {label && <span className="font-medium">{label}</span>}
         </button>
 
         <div
-          className={`absolute right-0 mt-2 w-48 bg-white rounded-xl shadow-lg ring-1 ring-black ring-opacity-5 z-50 transform transition-all duration-200 ${
+          className={`absolute right-0 mt-2 w-48 bg-white dark:bg-gray-800 rounded-lg shadow-xl border border-gray-100 dark:border-gray-700 z-50 transition-all duration-200 origin-top-right ${
             open ? 'opacity-100 scale-100' : 'opacity-0 scale-95 pointer-events-none'
           }`}
         >
-          <div className="py-2">
+          <div className="py-1">
             {items.map((item, idx) =>
               item.onClick ? (
                 <button
                   key={idx}
                   onClick={item.onClick}
-                  className="w-full text-left block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition"
+                  className="w-full text-left px-4 py-2.5 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors duration-150 flex items-center"
                 >
                   {item.label}
                 </button>
@@ -64,7 +65,7 @@ const DropDown: React.FC<DropDownProps> = ({
                 <Link
                   key={idx}
                   href={item.href || '#'}
-                  className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition"
+                  className="w-full text-left px-4 py-2.5 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors duration-150 flex items-center"
                 >
                   {item.label}
                 </Link>
@@ -80,17 +81,18 @@ const DropDown: React.FC<DropDownProps> = ({
   return (
     <div className="transition-all duration-200 ease-linear">
       <div
-        className={`flex items-center p-2.5 rounded-md text-sm font-medium text-gray-700 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer ${
-          collapsed ? 'w-14' : 'justify-between'
+        className={`flex items-center p-3 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-100/50 dark:hover:bg-gray-700/50 cursor-pointer transition-colors duration-200 ${
+          collapsed ? 'w-12 justify-center' : 'justify-between'
         }`}
         onClick={toggleDropdown}
       >
         <div className="flex items-center">
-          <span className="text-gray-500 dark:text-gray-300">
+          <span className="text-gray-500 dark:text-gray-400 group-hover:text-gray-700 dark:group-hover:text-gray-200">
             {React.isValidElement(icon)
               ? React.cloneElement(icon, {
                   size: 20,
                   strokeWidth: 1.75,
+                  className: "transition-transform group-hover:scale-110"
                 })
               : icon}
           </span>
@@ -99,38 +101,45 @@ const DropDown: React.FC<DropDownProps> = ({
         </div>
 
         {!collapsed && (
-          <span>
-            {open ? (
-              <ChevronDown size={16} strokeWidth={1.75} />
-            ) : (
-              <ChevronRight size={16} strokeWidth={1.75} />
-            )}
-          </span>
+          <motion.span
+            animate={{ rotate: open ? 180 : 0 }}
+            transition={{ duration: 0.2 }}
+            className="text-gray-400 dark:text-gray-500"
+          >
+            <ChevronDown size={16} strokeWidth={2} />
+          </motion.span>
         )}
       </div>
 
       {!collapsed && open && (
-        <div className="ml-8 space-y-1 transition-all duration-300 ease-linear overflow-hidden">
-          {items.map((item, idx) =>
-            item.onClick ? (
-              <button
-                key={idx}
-                onClick={item.onClick}
-                className="block w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-white hover:bg-gray-200 dark:hover:bg-gray-700 rounded-md transition"
-              >
-                {item.label}
-              </button>
-            ) : (
-              <Link
-                key={idx}
-                href={item.href || '#'}
-                className="block px-4 py-2 text-sm text-gray-700 dark:text-white hover:bg-gray-200 dark:hover:bg-gray-700 rounded-md transition"
-              >
-                {item.label}
-              </Link>
-            )
-          )}
-        </div>
+        <motion.div
+          initial={{ height: 0, opacity: 0 }}
+          animate={{ height: 'auto', opacity: 1 }}
+          transition={{ duration: 0.2, ease: "easeInOut" }}
+          className="ml-8 overflow-hidden"
+        >
+          <div className="py-1 space-y-1">
+            {items.map((item, idx) =>
+              item.onClick ? (
+                <button
+                  key={idx}
+                  onClick={item.onClick}
+                  className="block w-full text-left px-4 py-2 text-sm text-gray-600 dark:text-gray-300 hover:bg-gray-100/50 dark:hover:bg-gray-700/50 rounded-md transition-colors duration-150"
+                >
+                  {item.label}
+                </button>
+              ) : (
+                <Link
+                  key={idx}
+                  href={item.href || '#'}
+                  className="block px-4 py-2 text-sm text-gray-600 dark:text-gray-300 hover:bg-gray-100/50 dark:hover:bg-gray-700/50 rounded-md transition-colors duration-150"
+                >
+                  {item.label}
+                </Link>
+              )
+            )}
+          </div>
+        </motion.div>
       )}
     </div>
   );

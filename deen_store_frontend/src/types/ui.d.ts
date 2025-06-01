@@ -94,7 +94,7 @@ interface ForgotPasswordModalProps {
   forgotPhone;
   setForgotPhone;
   onSelectMethod: (method: 'email' | 'phone') => void;
-  loading?: boolean; 
+  loading?: boolean;
   error?: string | null;
 }
 
@@ -118,7 +118,7 @@ export type StyleType = 'primary' | 'light' | 'dark' | 'accent';
 export interface SidebarItemProps {
   label: string;
   collapsed: boolean;
-  icon: React.ReactElement<{ 
+  icon: React.ReactElement<{
     size?: number;
     strokeWidth?: number;
     className?: string;
@@ -126,7 +126,7 @@ export interface SidebarItemProps {
   showTooltip?: boolean;
   href?: string;
   activeClass?: string;
-  rightIcon?: React.ReactNode; 
+  rightIcon?: React.ReactNode;
 }
 
 export interface DropdownItem {
@@ -136,9 +136,9 @@ export interface DropdownItem {
 }
 
 export interface DropDownProps {
-  icon: React.ReactElement<{ size?: number; strokeWidth?: number } & React.SVGProps<SVGSVGElement>>;
+  icon?: React.ReactElement<{ size?: number; strokeWidth?: number } & React.SVGProps<SVGSVGElement>>;
   label?: string;
-  collapsed: boolean;
+  collapsed?: boolean;
   items: DropdownItem[];
   variant?: 'sidebar' | 'navbar';
   showTooltip?: boolean;
@@ -179,7 +179,7 @@ export interface SidebarDropdownItem {
   icon?: React.ReactElement;
   items?: SidebarDropdownItem[];
   onMouseEnter?: () => void;
-  onClick?: () => void; 
+  onClick?: () => void;
 }
 
 export interface SidebarDropdownProps {
@@ -194,7 +194,7 @@ export interface SidebarDropdownProps {
   onClick?: () => void;
 }
 
-export  interface DashboardProps {
+export interface DashboardProps {
   isSidebarCollapsed: boolean;
 }
 
@@ -204,14 +204,14 @@ export interface BreadcrumbProps {
 
 export interface ProgressProps {
   value?: number;
-  max ?: number;
+  max?: number;
   showLabel?: boolean;
-  color? : string;
+  color?: string;
   className?: string;
   title?: string;
 }
 
-export interface BarProps{
+export interface BarProps {
   data: any;
   options?: any;
   width?: number;
@@ -247,6 +247,8 @@ export interface LoginResponse {
 
 export interface ErrorResponse {
   message: string;
+  details?: string;
+  status?: number; 
 }
 
 export interface AuthState {
@@ -275,7 +277,7 @@ export interface Role {
   id: number;
   name: string;
   slug: string;
-  permissions?: string[];
+  permissions?: Array<string | Permission>;
   users?: string[];
   title?: string;
   description?: string;
@@ -294,11 +296,14 @@ interface RoleData {
 export interface RolePayload {
   name: string;
   slug?: string;
+  permission_names: string[];
+  permissions?: string[];
 }
 
 export interface RoleResponse {
   role: Role;
   message?: string;
+  permissions: { id: number; name: string }[];
 }
 
 export interface PermissionAttachPayload {
@@ -315,9 +320,25 @@ export interface RoleState {
   roles: Role[];
   selectedRole: Role | null;
   loading: boolean;
+  rolePermissions: Permission[];
   error: string | null;
   rolePermissions?: string[]; // add if needed
   roleUsers?: number[]; // add if needed
+  successMessage: string | null;
+  pagination: {
+    current_page: number;
+    total: number;
+    per_page: number;
+    last_page: number;
+};
+
+
+  roles: Role[];
+  selectedRole: Role | null;
+  rolePermissions: RolePermissionsResponse | null; // Updated to match response structure
+  roleUsers?: number[];
+  loading: boolean;
+  error: string | null;
   successMessage: string | null;
 }
 
@@ -328,4 +349,50 @@ export interface PaginatedRoleResponse {
   per_page: number;
   last_page: number;
   // add other pagination fields from your API response if needed
+}
+
+export interface RolePermissionsResponse {
+  data: Permission[];
+  meta: {
+      current_page: number;
+      per_page: number;
+      total: number;
+      last_page: number;
+  };
+}
+
+export interface Permission {
+  id: number;
+  name: string;
+  slug: string;
+  guard_name: string;
+  pivot?: {
+      role_id: number;
+      permission_id: number;
+  };
+}
+
+
+//Permission Interface *******************************************
+export interface Permission {
+  id: number;
+  name: string;
+  guard_name?: string;
+  created_at?: string;
+  updated_at?: string;
+  slug?: string; 
+}
+
+export interface PermissionState {
+  permissions: Permission[];
+  loading: boolean;
+  error: string | null;
+  pagination: Pagination;
+  successMessage: string | null;
+}
+
+export interface Pagination {
+  currentPage: number;
+  lastPage: number;
+  total: number;
 }

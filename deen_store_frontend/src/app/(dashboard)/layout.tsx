@@ -9,6 +9,8 @@ import Breadcrumb from '@/components/ui/breadcrumb/Breadcrumb';
 import NestedSidebar from '@/components/layout/Sidebar/NestedSidebar';
 import ROUTES from '@/constants/route.constant';
 import BREADCRUMB_CONFIG from '@/utility/breadcrumb.config';
+import Head from 'next/head';
+import FloatingThemeSelector from './FloatingThemeSelector';
 
 const SIDEBAR_WIDTH = 250;
 const SECONDARY_SIDEBAR_WIDTH = 220;
@@ -66,6 +68,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
 
   return (
     <div className="flex w-full h-full bg-[rgb(var(--background-light))] relative">
+      <FloatingThemeSelector />
       {/* Main Sidebar */}
       <Sidebar
         collapsed={collapsed}
@@ -98,7 +101,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
 
       {/* Main Content Area */}
       <div
-        className="flex-1 transition-all duration-300"
+        className="flex-1 transition-all duration-300 min-w-0"
         style={{
           marginLeft: collapsed ? '80px' : `${SIDEBAR_WIDTH}px`,
           paddingTop: `${NAVBAR_HEIGHT}px`,
@@ -119,6 +122,14 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
             opacity: secondarySidebarOpen ? 0.7 : 1,
           }}
         >
+           <Head>
+                {/* For modern browsers */}
+                <link rel="icon" type="image/png" href="/logo/opengraph-image.png" sizes="32x32" />
+                {/* For older browsers */}
+                <link rel="icon" href="/logo/opengraph-image.png" />
+                {/* For Apple devices */}
+                <link rel="apple-touch-icon" href="/logo/opengraph-image.png" />
+            </Head>
           {children}
         </main>
       </div>

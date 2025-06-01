@@ -3,12 +3,14 @@ import { useDispatch, useSelector, TypedUseSelectorHook } from 'react-redux';
 import authReducer from '@/features/auth/authSlice';
 import forgotPasswordReducer from '@/features/auth/forgetPasswordSlice';
 import roleReducer from '@/features/role/roleSlice';
+import permissionReducer from '@/features/permissions/permissionsSlice';
 
 export const store = configureStore({
   reducer: {
     auth: authReducer,
     forgotPassword: forgotPasswordReducer,
     role: roleReducer,
+    permissions:permissionReducer,
   },
   devTools: process.env.NODE_ENV !== 'production',
 });

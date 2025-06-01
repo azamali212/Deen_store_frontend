@@ -1,3 +1,4 @@
+"use client";
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
 import { AxiosError } from 'axios';
 import api from '@/services/api';
@@ -11,6 +12,8 @@ import {
     PermissionAttachPayload,
     RoleUserAttachPayload,
     PaginatedRoleResponse,
+    RolePermissionsResponse,
+    Permission,
 } from '@/types/ui';
 
 const initialState: RoleState = {
@@ -19,18 +22,30 @@ const initialState: RoleState = {
     loading: false,
     error: null,
     successMessage: null,
+    rolePermissions: [],
+    pagination: {
+        current_page: 1,
+        total: 0,
+        per_page: 15,
+        last_page: 1,
+    },
 };
 
 // Fetch all roles
-export const fetchRoles = createAsyncThunk<PaginatedRoleResponse, void, { rejectValue: ErrorResponse }>(
+export const fetchRoles = createAsyncThunk<PaginatedRoleResponse, { page?: number; search?: string }, { rejectValue: ErrorResponse }>(
     'role/fetchAll',
-    async (_, { rejectWithValue }) => {
+    async ({ page = 1, search }, { rejectWithValue }) => {
         try {
             const token = Cookies.get('token');
             const response = await api.get('/role', {
+                params: {
+                    page,
+                    search,
+                    per_page: 15
+                },
                 headers: { Authorization: `Bearer ${token}` },
             });
-            return response.data; // This is the full object { current_page, data, total, ... }
+            return response.data;
         } catch (err) {
             const error = err as AxiosError<ErrorResponse>;
             return rejectWithValue(error.response?.data || { message: 'Fetch roles failed' });
@@ -55,13 +70,18 @@ export const fetchRole = createAsyncThunk<RoleResponse, number, { rejectValue: E
     }
 );
 
+
 // Create a new role
 export const createRole = createAsyncThunk<RoleResponse, RolePayload, { rejectValue: ErrorResponse }>(
     'role/create',
     async (data, { rejectWithValue }) => {
         try {
             const token = Cookies.get('token');
-            const response = await api.post('/role/create', data, {
+            const response = await api.post('/role/create', {
+                name: data.name,
+                slug: data.slug,
+                permission_names: data.permission_names, // Send permission names
+            }, {
                 headers: { Authorization: `Bearer ${token}` },
             });
             return response.data;
@@ -72,7 +92,7 @@ export const createRole = createAsyncThunk<RoleResponse, RolePayload, { rejectVa
     }
 );
 
-// Update role
+// Update role SLice
 export const updateRole = createAsyncThunk<RoleResponse, { id: number; data: RolePayload }, { rejectValue: ErrorResponse }>(
     'role/update',
     async ({ id, data }, { rejectWithValue }) => {
@@ -106,30 +126,46 @@ export const deleteRole = createAsyncThunk<void, number, { rejectValue: ErrorRes
 );
 
 // Attach permissions to role
-export const attachPermissions = createAsyncThunk<void, PermissionAttachPayload, { rejectValue: ErrorResponse }>(
+export const attachPermissions = createAsyncThunk<Role, PermissionAttachPayload, { rejectValue: ErrorResponse }>(
     'role/attachPermissions',
     async ({ id, permissions }, { rejectWithValue }) => {
         try {
             const token = Cookies.get('token');
-            await api.post(`/roles/${id}/permissions`, { permissions }, {
-                headers: { Authorization: `Bearer ${token}` },
-            });
+            const response = await api.post<{ role: Role }>(
+                `/roles/${id}/permissions`,
+                { permission_names: permissions },
+                {
+                    headers: {
+                        Authorization: `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    }
+                }
+            );
+            return response.data.role; // Return the updated role
         } catch (err) {
             const error = err as AxiosError<ErrorResponse>;
-            return rejectWithValue(error.response?.data || { message: 'Attach permissions failed' });
+            return rejectWithValue(error.response?.data || {
+                message: 'Attach permissions failed',
+                details: error.message
+            });
         }
     }
 );
 
 // Detach permissions
-export const detachPermissions = createAsyncThunk<void, PermissionAttachPayload, { rejectValue: ErrorResponse }>(
+export const detachPermissions = createAsyncThunk<Role, PermissionAttachPayload, { rejectValue: ErrorResponse }>(
     'role/detachPermissions',
     async ({ id, permissions }, { rejectWithValue }) => {
         try {
             const token = Cookies.get('token');
-            await api.post(`/roles/${id}/permissions/detach`, { permissions }, {
-                headers: { Authorization: `Bearer ${token}` },
-            });
+            const response = await api.post<{ role: Role }>(
+                `/roles/${id}/permissions/detach`,
+                { permissions },
+                {
+                    headers: { Authorization: `Bearer ${token}` },
+                }
+            );
+            return response.data.role; // Return the updated role
         } catch (err) {
             const error = err as AxiosError<ErrorResponse>;
             return rejectWithValue(error.response?.data || { message: 'Detach permissions failed' });
@@ -170,18 +206,18 @@ export const detachUsers = createAsyncThunk<void, RoleUserAttachPayload, { rejec
 );
 
 // Fetch permissions of a role
-export const fetchRolePermissions = createAsyncThunk<string[], number, { rejectValue: ErrorResponse }>(
+export const fetchRolePermissions = createAsyncThunk<Permission[], number, { rejectValue: ErrorResponse }>(
     'role/fetchRolePermissions',
     async (id, { rejectWithValue }) => {
         try {
             const token = Cookies.get('token');
-            const response = await api.get(`/roles/${id}/permissions`, {
+            const response = await api.get<RolePermissionsResponse>(`/roles/${id}/permissions`, {
                 headers: { Authorization: `Bearer ${token}` },
             });
-            return response.data.permissions; // Adjust based on API response shape
+            return response.data.data; // Return the permissions array from the response
         } catch (err) {
             const error = err as AxiosError<ErrorResponse>;
-            return rejectWithValue(error.response?.data || { message: 'Fetch role permissions failed' });
+            return rejectWithValue(error.response?.data || { message: 'Failed to fetch role permissions' });
         }
     }
 );
@@ -220,10 +256,9 @@ const roleSlice = createSlice({
                 state.loading = true;
                 state.error = null;
             })
-            .addCase(fetchRolePermissions.fulfilled, (state, action) => {
+            .addCase(fetchRolePermissions.fulfilled, (state, action: PayloadAction<Permission[]>) => {
                 state.loading = false;
                 state.rolePermissions = action.payload;
-                state.error = null;
             })
             .addCase(fetchRolePermissions.rejected, (state, action) => {
                 state.loading = false;
@@ -249,6 +284,12 @@ const roleSlice = createSlice({
             .addCase(fetchRoles.fulfilled, (state, action) => {
                 state.loading = false;
                 state.roles = action.payload.data;
+                state.pagination = {
+                    current_page: action.payload.current_page,
+                    total: action.payload.total,
+                    per_page: action.payload.per_page,
+                    last_page: action.payload.last_page,
+                };
             })
             .addCase(fetchRoles.rejected, (state, action) => {
                 state.loading = false;
@@ -257,14 +298,72 @@ const roleSlice = createSlice({
             .addCase(fetchRole.fulfilled, (state, action) => {
                 state.selectedRole = action.payload.role;
             })
+            .addCase(createRole.pending, (state) => {
+                state.loading = true;
+                state.error = null;
+                state.successMessage = null;
+            })
+            // In your createRole.fulfilled case:
             .addCase(createRole.fulfilled, (state, action) => {
-                state.roles.push(action.payload.role);
+                state.loading = false;
+                const newRole = {
+                    ...action.payload.role,
+                    permissions: action.payload.permissions || []
+                };
+                state.roles.push(newRole);
                 state.successMessage = 'Role created successfully';
+                state.error = null;
+            })
+            .addCase(createRole.rejected, (state, action) => {
+                state.loading = false;
+                const error = action.payload;
+                if (error?.status === 422) {
+                    state.error = 'Invalid data format. Please check your inputs.';
+                } else {
+                    state.error = error?.message || 'Failed to create role';
+                }
+                state.successMessage = null;
             })
             .addCase(updateRole.fulfilled, (state, action) => {
                 const index = state.roles.findIndex((r) => r.id === action.payload.role.id);
                 if (index !== -1) state.roles[index] = action.payload.role;
                 state.successMessage = 'Role updated successfully';
+            })
+            .addCase(attachPermissions.pending, (state) => {
+                state.loading = true;
+                state.error = null;
+            })
+            .addCase(attachPermissions.fulfilled, (state, action: PayloadAction<Role>) => {
+                state.loading = false;
+                state.successMessage = 'Permissions updated successfully';
+                if (state.roles) {
+                    const updatedRole = action.payload;
+                    state.roles = state.roles.map(role =>
+                        role.id === updatedRole.id ? {
+                            ...role,
+                            permissions: updatedRole.permissions,
+                            permissionsCount: updatedRole.permissions?.length || 0
+                        } : role
+                    );
+                }
+            })
+            .addCase(detachPermissions.fulfilled, (state, action: PayloadAction<Role>) => {
+                state.loading = false;
+                state.successMessage = 'Permissions updated successfully';
+                if (state.roles) {
+                    const updatedRole = action.payload;
+                    state.roles = state.roles.map(role =>
+                        role.id === updatedRole.id ? {
+                            ...role,
+                            permissions: updatedRole.permissions,
+                            permissionsCount: updatedRole.permissions?.length || 0
+                        } : role
+                    );
+                }
+            })
+            .addCase(attachPermissions.rejected, (state, action) => {
+                state.loading = false;
+                state.error = action.payload?.message || 'Failed to attach permissions';
             })
             .addCase(deleteRole.fulfilled, (state, action) => {
                 state.roles = state.roles.filter((r) => r.id !== action.meta.arg);
