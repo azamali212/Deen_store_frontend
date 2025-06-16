@@ -11,6 +11,7 @@ import ROUTES from '@/constants/route.constant';
 import BREADCRUMB_CONFIG from '@/utility/breadcrumb.config';
 import Head from 'next/head';
 import FloatingThemeSelector from './FloatingThemeSelector';
+import { SidebarColors } from '@/utility/sidebar-colors';
 
 const SIDEBAR_WIDTH = 250;
 const SECONDARY_SIDEBAR_WIDTH = 220;
@@ -29,6 +30,10 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
     setSecondarySidebarOpen(item !== null);
   };
   const handleMouseLeaveNested = () => toggleSecondarySidebar(null);
+
+  if (typeof window !== 'undefined') {
+    SidebarColors.initializeColor();
+  }
 
   useEffect(() => {
     applySavedTheme();

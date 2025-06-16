@@ -4,6 +4,7 @@ import authReducer from '@/features/auth/authSlice';
 import forgotPasswordReducer from '@/features/auth/forgetPasswordSlice';
 import roleReducer from '@/features/role/roleSlice';
 import permissionReducer from '@/features/permissions/permissionsSlice';
+import userSlice from '@/features/user/userSlice';
 
 export const store = configureStore({
   reducer: {
@@ -11,6 +12,7 @@ export const store = configureStore({
     forgotPassword: forgotPasswordReducer,
     role: roleReducer,
     permissions:permissionReducer,
+    user:userSlice
   },
   devTools: process.env.NODE_ENV !== 'production',
 });

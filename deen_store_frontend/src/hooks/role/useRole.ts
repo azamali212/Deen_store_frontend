@@ -2,7 +2,7 @@
 import { useDispatch, useSelector } from 'react-redux';
 import { useCallback, useState } from 'react';
 import { RootState, AppDispatch } from '@/store'; // Adjust if needed
-import  debounce  from 'lodash.debounce';
+import debounce from 'lodash.debounce';
 
 import {
   fetchRoles,
@@ -18,7 +18,8 @@ import {
   fetchRoleUsers,
   resetRoleState
 } from '@/features/role/roleSlice'; // Adjust import path if needed
-import { Role } from '@/types/ui';
+import { PaginatedUserResponse, Role } from '@/types/ui';
+import { deleteMultipleRoles } from '../../features/role/roleSlice';
 
 export const useRole = () => {
   const dispatch = useDispatch<AppDispatch>();
@@ -106,27 +107,65 @@ export const useRole = () => {
     dispatch(detachPermissions({ id, permissions }));
   }, [dispatch]);
 
-  const attachRoleUsers = useCallback((id: number, users: number[]) => {
-    dispatch(attachUsers({ id, users }));
+  const attachRoleUsers = useCallback(async (roleId: number, userIds: string[]) => {
+    try {
+      await dispatch(attachUsers({
+        id: roleId,
+        users: userIds
+      })).unwrap();
+      return true;
+    } catch (error) {
+      console.error('Error attaching users:', error);
+      return false;
+    }
   }, [dispatch]);
 
-  const detachRoleUsers = useCallback((id: number, users: number[]) => {
-    dispatch(detachUsers({ id, users }));
+  const detachRoleUsers = useCallback(async (roleId: number, userIds: string[]) => {
+    try {
+      await dispatch(detachUsers({
+        id: roleId,
+        users: userIds
+      })).unwrap();
+      return true;
+    } catch (error) {
+      console.error('Error detaching users:', error);
+      return false;
+    }
   }, [dispatch]);
 
   const loadRolePermissions = useCallback((id: number) => {
     dispatch(fetchRolePermissions(id));
   }, [dispatch]);
 
-  const loadRoleUsers = useCallback((id: number) => {
-    dispatch(fetchRoleUsers(id));
+  const loadRoleUsers = useCallback(async (id: number): Promise<PaginatedUserResponse | null> => {
+    try {
+      const result = await dispatch(fetchRoleUsers(id)).unwrap();
+      return result;
+    } catch (error) {
+      console.error('Error loading role users:', error);
+      return null;
+    }
   }, [dispatch]);
 
   const resetRole = useCallback(() => {
     dispatch(resetRoleState());
   }, [dispatch]);
 
+  
+  const deleteMultipleRolesHandler = useCallback(async (roleIds: number[]) => {
+    try {
+      await dispatch(deleteMultipleRoles(roleIds)).unwrap();
+      return { success: true, message: 'Roles deleted successfully' };
+    } catch (error: unknown) {
+      let errorMessage = 'Failed to delete roles';
 
+      if (typeof error === 'object' && error !== null && 'message' in error) {
+        errorMessage = (error as { message: string }).message;
+      }
+
+      return { success: false, error: errorMessage };
+    }
+  }, [dispatch]);
 
   return {
     roles,
@@ -156,6 +195,7 @@ export const useRole = () => {
     handleSearch,
     searchQuery,
     isSearching,
-    onSearchChange
+    onSearchChange,
+    deleteMultipleRoles: deleteMultipleRolesHandler
   };
 }

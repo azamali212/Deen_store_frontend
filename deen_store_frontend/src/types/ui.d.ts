@@ -1,4 +1,5 @@
 import Dashboard from '../app/(dashboard)/dashboard/page';
+import { color } from 'framer-motion';
 "use client"
 
 //Auth 
@@ -48,9 +49,18 @@ export interface MobileLayoutProps {
 }
 //Table
 export interface TableProps {
-  headers: string[];
-  data: Array<Record<string, any>>;
   title?: string;
+    headers: string[];
+    data: any[];
+    customRender?: Record<string, (value: any) => React.ReactNode>;
+    externalPagination?: boolean;
+    currentPage?: number;
+    totalPages?: number;
+    onPageChange?: (page: number) => void;
+    externalSearch?: boolean;
+    searchQuery?: string;
+    onSearchChange?: (query: string) => void;
+    pageSize?: number;
 }
 
 interface LogoProps {
@@ -250,6 +260,10 @@ export interface ErrorResponse {
   details?: string;
   status?: number; 
 }
+export interface ErrorDetails {
+  message: string;
+  details?: Record<string, string[]> | {}; // For validation errors
+}
 
 export interface AuthState {
   user: User | null;
@@ -313,18 +327,22 @@ export interface PermissionAttachPayload {
 
 export interface RoleUserAttachPayload {
   id: number;
-  users: number[];
+  users: string[];
 }
 
 export interface RoleState {
   roles: Role[];
   selectedRole: Role | null;
+  roleUsers: PaginatedUserResponse | null;
   loading: boolean;
+  roleUsers: PaginatedUserResponse | null;
   rolePermissions: Permission[];
   error: string | null;
   rolePermissions?: string[]; // add if needed
   roleUsers?: number[]; // add if needed
   successMessage: string | null;
+  error: ErrorDetails | null; // Changed from string | null
+  lastDeleted?: string; // Optional timestamp
   pagination: {
     current_page: number;
     total: number;
@@ -340,6 +358,15 @@ export interface RoleState {
   loading: boolean;
   error: string | null;
   successMessage: string | null;
+}
+
+interface PaginatedUserResponse {
+  data: User[];
+  current_page: number;
+  total: number;
+  per_page: number;
+  last_page: number;
+
 }
 
 export interface PaginatedRoleResponse {
@@ -381,6 +408,9 @@ export interface Permission {
   created_at?: string;
   updated_at?: string;
   slug?: string; 
+  category?: string;
+  roles?: Role[];
+  color?: string; // 
 }
 
 export interface PermissionState {
@@ -389,10 +419,55 @@ export interface PermissionState {
   error: string | null;
   pagination: Pagination;
   successMessage: string | null;
+  color?: string;
 }
 
-export interface Pagination {
-  currentPage: number;
-  lastPage: number;
+export interface ExtendedPermission extends Permission {
+  roles?: Array<{
+    id: number;
+    name: string;
+    slug: string;
+    guard_name: string;
+    created_at: string;
+    updated_at: string;
+    pivot: {
+      permission_id: number;
+      role_id: number;
+    };
+  }>;
+}
+
+
+//User Interface ********************************************
+export interface UserPagination {
+  current_page: number;
+  last_page: number;
+  per_page: number;
   total: number;
 }
+
+
+
+export interface UserState {
+  users: UserType[];
+  loading: boolean;
+  error: string | null;
+  pagination: Pagination;
+  successMessage: string | null;
+  selectedUser: UserType | null;
+  // Optional filters you might add later:
+  // filters?: {
+  //     search?: string;
+  //     status?: string;
+  //     role?: string;
+  // };
+}
+
+export interface User {
+  id: string; // or number - must be consistent
+  name: string;
+  email: string;
+  avatar?: string;
+}
+
+

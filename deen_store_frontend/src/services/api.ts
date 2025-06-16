@@ -3,12 +3,12 @@ import axios from 'axios';
 
 
 const api = axios.create({
-  baseURL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8001/api/v1',
+  baseURL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1',
   headers: {
     'Content-Type': 'application/json',
     Accept: 'application/json',
   },
-  withCredentials: true, // 👈 Important to include cookies in requests
+  withCredentials: false, // 👈 Important to include cookies in requests
 });
 
 // Add Authorization header if token exists (optional if backend needs it)

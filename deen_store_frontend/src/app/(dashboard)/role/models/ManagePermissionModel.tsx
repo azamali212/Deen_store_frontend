@@ -1,99 +1,117 @@
-"use client";
+'use client';
 import Button from '@/components/ui/buttons/button';
-import MultiSelectDropdown from '@/components/ui/dropdown/MultiSelectDropdown';
 import Model from '@/components/ui/modals/model';
 import { usePermission } from '@/hooks/permissions/usePermission';
 import { useRole } from '@/hooks/role/useRole';
 import { motion } from 'framer-motion';
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { toast } from 'react-toastify';
+import { Search, Check, X } from 'lucide-react';
 
 interface ManagePermissionModelProps {
-    isModalOpen: boolean;
-    setIsModalOpen: (v: boolean) => void;
-    roleId: number;
-    currentPermissions: string[];
-    roleColor: string;
-    onSuccess?: () => void;
-  }
-  
-  const ManagePermissionModel: React.FC<ManagePermissionModelProps> = ({
-    isModalOpen,
-    setIsModalOpen,
-    roleId,
-    currentPermissions,
-    roleColor,
-    onSuccess
-  }) => {
-    const { permissions, loading: permissionsLoading } = usePermission();
-    const { 
-      attachRolePermissions, 
-      detachRolePermissions, 
-      loading, 
-      error, 
-      successMessage, 
-      resetRole 
-    } = useRole();
-  
-    const [selectedPermissions, setSelectedPermissions] = useState<string[]>(currentPermissions);
-    const [hasChanges, setHasChanges] = useState(false);
-  
-    // Reset state when modal opens
-    useEffect(() => {
-      if (isModalOpen) {
-        setSelectedPermissions(currentPermissions);
-        setHasChanges(false);
+  isModalOpen: boolean;
+  setIsModalOpen: (v: boolean) => void;
+  roleId: number;
+  currentPermissions: string[];
+  roleColor: string;
+  onSuccess?: () => void;
+}
+
+const ManagePermissionModel: React.FC<ManagePermissionModelProps> = ({
+  isModalOpen,
+  setIsModalOpen,
+  roleId,
+  currentPermissions,
+  roleColor,
+  onSuccess
+}) => {
+  const { permissions, loading: permissionsLoading } = usePermission();
+  const {
+    attachRolePermissions,
+    detachRolePermissions,
+    loading,
+    error,
+    successMessage,
+    resetRole
+  } = useRole();
+
+  const [searchQuery, setSearchQuery] = useState('');
+  const [permissionsToAdd, setPermissionsToAdd] = useState<string[]>([]);
+  const [permissionsToRemove, setPermissionsToRemove] = useState<string[]>([]);
+
+  const allPermissions = permissions.map(p => p.name);
+
+  // Reset on modal open
+  useEffect(() => {
+    if (isModalOpen) {
+      setPermissionsToAdd([]);
+      setPermissionsToRemove([]);
+      setSearchQuery('');
+    }
+  }, [isModalOpen]);
+
+  const assignedPermissions = allPermissions.filter(perm =>
+    currentPermissions.includes(perm)
+  );
+  const unassignedPermissions = allPermissions.filter(perm =>
+    !currentPermissions.includes(perm)
+  );
+
+  const filteredPermissions = [...assignedPermissions, ...unassignedPermissions].filter(
+    perm => perm.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  const isPermissionSelected = (perm: string): boolean => {
+    const hasRole = currentPermissions.includes(perm);
+    return hasRole ? !permissionsToRemove.includes(perm) : permissionsToAdd.includes(perm);
+  };
+
+  const togglePermission = (perm: string) => {
+    const hasRole = currentPermissions.includes(perm);
+
+    if (hasRole) {
+      setPermissionsToRemove(prev =>
+        prev.includes(perm) ? prev.filter(p => p !== perm) : [...prev, perm]
+      );
+    } else {
+      setPermissionsToAdd(prev =>
+        prev.includes(perm) ? prev.filter(p => p !== perm) : [...prev, perm]
+      );
+    }
+  };
+
+  const handleSubmit = async () => {
+    try {
+      if (permissionsToRemove.length > 0) {
+        await detachRolePermissions(roleId, permissionsToRemove);
       }
-    }, [isModalOpen, currentPermissions]);
-  
-    // Handle success/error states
-    useEffect(() => {
-      if (successMessage) {
-        toast.success(successMessage);
-        resetRole();
+      if (permissionsToAdd.length > 0) {
+        await attachRolePermissions(roleId, permissionsToAdd);
+      }
+
+      if (permissionsToAdd.length || permissionsToRemove.length) {
+        toast.success('Permissions updated successfully');
+        onSuccess?.();
         setIsModalOpen(false);
-        onSuccess?.(); // Call the success callback
+      } else {
+        toast.info('No changes to save');
       }
-      if (error) {
-        toast.error(error);
-        resetRole();
-      }
-    }, [successMessage, error, resetRole, setIsModalOpen, onSuccess]);
-  
-    // Check for changes
-    useEffect(() => {
-      const permissionsChanged = 
-        JSON.stringify([...selectedPermissions].sort()) !== 
-        JSON.stringify([...currentPermissions].sort());
-      setHasChanges(permissionsChanged);
-    }, [selectedPermissions, currentPermissions]);
-  
-    const handleSubmit = async () => {
-      if (!hasChanges) {
-        toast.info("No permission changes detected");
-        return;
-      }
-  
-      try {
-        const permissionsToAdd = selectedPermissions.filter(
-          perm => !currentPermissions.includes(perm)
-        );
-        const permissionsToRemove = currentPermissions.filter(
-          perm => !selectedPermissions.includes(perm)
-        );
-  
-        // Perform updates sequentially
-        if (permissionsToRemove.length > 0) {
-          await detachRolePermissions(roleId, permissionsToRemove);
-        }
-        if (permissionsToAdd.length > 0) {
-          await attachRolePermissions(roleId, permissionsToAdd);
-        }
-      } catch (err) {
-        console.error("Failed to update permissions:", err);
-        toast.error("Failed to update permissions");
-      }
-    };
+    } catch (err) {
+      console.error(err);
+      toast.error('Failed to update permissions');
+    }
+  };
+
+  useEffect(() => {
+    if (successMessage) {
+      toast.success(successMessage);
+      resetRole();
+    }
+    if (error) {
+      toast.error(error);
+      resetRole();
+    }
+  }, [successMessage, error]);
 
   return (
     <Model
@@ -104,71 +122,66 @@ interface ManagePermissionModelProps {
       className="fixed right-0 bg-[rgb(var(--foreground))] text-[rgb(var(--text-color))] top-0 min-h-screen rounded-none border-l border-[rgb(var(--muted))]/20"
       showFooter={true}
       footerContent={
-        <div className="flex justify-end gap-3">
-          <Button
-            variant="ghost"
-            onClick={() => setIsModalOpen(false)}
-            className="text-[rgb(var(--text-color))] hover:bg-[rgb(var(--muted))]/10"
-          >
-            Cancel
-          </Button>
-          <Button
-            onClick={handleSubmit}
-            style={{ backgroundColor: roleColor }}
-            disabled={loading || permissionsLoading || !hasChanges}
-          >
-            {loading ? 'Saving...' : 'Save Changes'}
-          </Button>
+        <div className="flex justify-between items-center w-full">
+          <div className="text-sm text-[rgb(var(--muted))]">
+            {permissionsToAdd.length + permissionsToRemove.length} changes pending
+          </div>
+          <div className="flex gap-3">
+            <Button
+              variant="ghost"
+              onClick={() => setIsModalOpen(false)}
+              className="text-[rgb(var(--text-color))] hover:bg-[rgb(var(--muted))]/10"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleSubmit}
+              style={{ backgroundColor: roleColor }}
+              disabled={loading || permissionsLoading}
+            >
+              {loading ? 'Saving...' : 'Save Changes'}
+            </Button>
+          </div>
         </div>
       }
     >
-      <div className="space-y-6">
-        <div>
-          <label className="block text-sm font-medium text-[rgb(var(--text-color))] mb-1">
-            Select Permissions
-          </label>
-          {permissionsLoading ? (
-            <div className="animate-pulse h-10 bg-[rgb(var(--muted))]/20 rounded-md"></div>
-          ) : (
-            <MultiSelectDropdown
-              options={permissions.map(perm => ({
-                value: perm.name,
-                label: perm.name
-              }))}
-              selectedValues={selectedPermissions}
-              onChange={setSelectedPermissions}
-              placeholder="Select permissions..."
-              className="bg-[rgb(var(--background))] text-[rgb(var(--text-color))] border-[rgb(var(--muted))]/20"
-            />
-          )}
+      <div className="space-y-4">
+        <div className="relative">
+          <Search className="absolute left-3 top-2.5 h-4 w-4 text-[rgb(var(--muted))]" />
+          <input
+            type="text"
+            placeholder="Search permissions..."
+            className="w-full pl-9 pr-3 py-2 border border-[rgb(var(--muted))]/20 rounded-md bg-[rgb(var(--background))] text-[rgb(var(--text-color))] placeholder:text-[rgb(var(--muted))] text-sm"
+            value={searchQuery}
+            onChange={e => setSearchQuery(e.target.value)}
+          />
         </div>
 
-        <div className="pt-2">
-          <h4 className="text-sm font-medium mb-2 text-[rgb(var(--text-color))]">
-            Current Permissions:
-          </h4>
-          {currentPermissions.length > 0 ? (
-            <div className="flex flex-wrap gap-2">
-              {currentPermissions.map((permission, index) => (
-                <motion.span
-                  key={index}
+        {permissionsLoading ? (
+          <div className="animate-pulse h-10 bg-[rgb(var(--muted))]/20 rounded-md"></div>
+        ) : (
+          <div className="flex flex-wrap gap-2">
+            {filteredPermissions.map((perm, idx) => {
+              const selected = isPermissionSelected(perm);
+              return (
+                <motion.div
+                  key={idx}
                   initial={{ opacity: 0, y: 5 }}
                   animate={{ opacity: 1, y: 0 }}
-                  className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium"
-                  style={{ 
-                    backgroundColor: `${roleColor}20`,
-                    color: roleColor,
-                    border: `1px solid ${roleColor}`
-                  }}
+                  className={`flex items-center gap-1 px-3 py-1 rounded-full border text-xs font-medium cursor-pointer transition-all duration-200 ${
+                    selected
+                      ? 'bg-[rgb(var(--accent))]/10 text-[rgb(var(--accent))] border-[rgb(var(--accent))]'
+                      : 'bg-[rgb(var(--muted))]/10 text-[rgb(var(--text-color))] border-[rgb(var(--muted))]/20'
+                  }`}
+                  onClick={() => togglePermission(perm)}
                 >
-                  {permission}
-                </motion.span>
-              ))}
-            </div>
-          ) : (
-            <p className="text-sm text-[rgb(var(--muted))]">No permissions assigned</p>
-          )}
-        </div>
+                  {selected ? <Check size={12} /> : <X size={12} />}
+                  {perm}
+                </motion.div>
+              );
+            })}
+          </div>
+        )}
       </div>
     </Model>
   );

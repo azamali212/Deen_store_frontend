@@ -10,9 +10,10 @@ const initialState: PermissionState = {
     error: null,
     successMessage: null,
     pagination: {
-        currentPage: 1,
-        lastPage: 1,
+        current_page: 1,
+        last_page: 1,
         total: 0,
+        per_page: 15
     },
 };
 
@@ -55,7 +56,7 @@ export const createPermission = createAsyncThunk<
     'permissions/createPermission',
     async (permissionData, { rejectWithValue }) => {
         try {
-            const response = await api.post('/permissions', permissionData);
+            const response = await api.post('/permission', permissionData);
             return response.data.data;
         } catch (err) {
             if (axios.isAxiosError(err)) {
@@ -68,6 +69,43 @@ export const createPermission = createAsyncThunk<
     }
 );
 
+export const exportPermissionsToExcel = createAsyncThunk<
+    void, // No return payload needed
+    void,
+    { rejectValue: string }
+>(
+    'permissions/exportPermissionsToExcel',
+    async (_, { rejectWithValue }) => {
+        try {
+            const response = await api.get('/permissions/export', {
+                responseType: 'blob' // This is crucial
+            });
+
+            // Create download link directly
+            const url = window.URL.createObjectURL(new Blob([response.data]));
+            const link = document.createElement('a');
+            link.href = url;
+            link.setAttribute('download', 'permissions_export.xlsx');
+            document.body.appendChild(link);
+            link.click();
+
+            // Clean up
+            setTimeout(() => {
+                document.body.removeChild(link);
+                window.URL.revokeObjectURL(url);
+            }, 100);
+
+            return; // No payload needed
+        } catch (err) {
+            if (axios.isAxiosError(err)) {
+                return rejectWithValue(
+                    err.response?.data?.error || err.message || 'Failed to export permissions'
+                );
+            }
+            return rejectWithValue('An unknown error occurred');
+        }
+    }
+);
 
 
 const permissionsSlice = createSlice({
@@ -115,8 +153,8 @@ const permissionsSlice = createSlice({
                     state.permissions = action.payload.data;
                     // Store pagination info (optional, adjust your state interface accordingly)
                     state.pagination = {
-                        currentPage: action.payload.current_page,
-                        lastPage: action.payload.last_page,
+                        current_page: action.payload.current_page,
+                        last_page: action.payload.last_page,
                         total: action.payload.total,
                     };
                 }
@@ -124,6 +162,20 @@ const permissionsSlice = createSlice({
             .addCase(fetchPermissions.rejected, (state, action) => {
                 state.loading = false;
                 state.error = action.payload || 'Failed to fetch permissions';
+            })
+            .addCase(exportPermissionsToExcel.pending, (state) => {
+                state.loading = true;
+                state.error = null;
+                state.successMessage = null;
+            })
+            .addCase(exportPermissionsToExcel.fulfilled, (state, action) => {
+                state.loading = false;
+                state.successMessage = 'Permissions exported successfully';
+                // You might want to do something with the file_url here
+            })
+            .addCase(exportPermissionsToExcel.rejected, (state, action) => {
+                state.loading = false;
+                state.error = action.payload || 'Failed to export permissions';
             });
     },
 });

@@ -29,14 +29,18 @@
     --sidebar-active-text: 255, 255, 255;  /* White */
 
 
-      /* Add these new sidebar color variables */
-      --sidebar-color-1: 255 255 255; /* Your current accent color */
-      --sidebar-color-2: 59 130 246;  /* Blue */
-      --sidebar-color-3: 16 185 129;  /* Emerald */
-      --sidebar-color-4: 139 92 246;  /* Purple */
-      --sidebar-color-5: 244 63 94;   /* Rose */
-      --sidebar-color-6: 234 179 8;   /* Amber */
-      --sidebar-color-7: 6 182 212;   /* Cyan */
+    --sidebar-color-1: 255 255 255;   /* White */
+    --sidebar-color-2: 59 130 246;    /* Blue */
+    --sidebar-color-3: 16 185 129;    /* Emerald */
+    --sidebar-color-4: 139 92 246;    /* Purple */
+    --sidebar-color-5: 244 63 94;     /* Rose */
+    --sidebar-color-6: 234 179 8;     /* Amber */
+    --sidebar-color-7: 6 182 212;     /* Cyan */
+    --sidebar-color-8: 251 191 36;    /* Golden Yellow */
+    --sidebar-color-9: 236 72 153;    /* Pink */
+    --sidebar-color-10: 79 70 229;    /* Indigo */
+    --sidebar-color-11: 132 204 22;   /* Lime */
+    --sidebar-color-12: 94 234 212;   /* Teal */
       
       /* Default sidebar color */
       --sidebar-bg: var(--sidebar-color-1);
@@ -87,13 +91,18 @@
     --theme-selector-bg: 30 41 59;
     --theme-selector-text: 243 244 246;
 
-    --sidebar-color-1: 17, 24, 39;
-    --sidebar-color-2: 39 110 226;
-    --sidebar-color-3: 6 155 119;
-    --sidebar-color-4: 119 72 216;
-    --sidebar-color-5: 224 43 74;
-    --sidebar-color-6: 214 159 0;
-    --sidebar-color-7: 0 162 192;
+    --sidebar-color-1: 17 24 39;      /* Very dark blue-gray */
+    --sidebar-color-2: 39 110 226;    /* Bright Blue */
+    --sidebar-color-3: 6 155 119;     /* Emerald Green */
+    --sidebar-color-4: 119 72 216;    /* Vivid Purple */
+    --sidebar-color-5: 224 43 74;     /* Vibrant Rose */
+    --sidebar-color-6: 214 159 0;     /* Amber Gold */
+    --sidebar-color-7: 0 162 192;     /* Electric Cyan */
+    --sidebar-color-8: 255 99 71;     /* Tomato Red */
+    --sidebar-color-9: 218 112 214;   /* Orchid */
+    --sidebar-color-10: 144 238 144;  /* Light Green */
+    --sidebar-color-11: 135 206 250;  /* Light Sky Blue */
+    --sidebar-color-12: 255 215 0;    /* Gold */
 
     --sidebar-bg: 17, 24, 39;              /* Dark Gray */
     --sidebar-text: 200, 210, 230;         /* Soft Light Gray */

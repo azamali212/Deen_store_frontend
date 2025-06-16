@@ -35,7 +35,23 @@ const BestSellingTable: React.FC = () => {
 
   const headers = ['Product', 'Category', 'Total', 'Stock', 'Total Revenue'];
 
-  return <Table title="Best Selling Products" headers={headers} data={data} />;
+  return <Table
+  headers={headers}
+  data={data}
+  title="Best Selling Products"
+  customRender={{
+    product: (value: any) => (
+      <div className="flex items-center gap-2">
+        <img
+          src={value.image}
+          alt={value.name}
+          className="w-8 h-8 rounded object-cover"
+        />
+        <span>{value.name}</span>
+      </div>
+    )
+  }}
+/>
 };
 
 export default BestSellingTable;

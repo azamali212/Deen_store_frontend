@@ -1,3 +1,4 @@
+"use client";
 import Button from '@/components/ui/buttons/button'
 import MultiSelectDropdown from '@/components/ui/dropdown/MultiSelectDropdown'
 import Input from '@/components/ui/inputs/input'

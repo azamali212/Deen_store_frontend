@@ -1,4 +1,3 @@
-"use client";
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
 import { AxiosError } from 'axios';
 import api from '@/services/api';
@@ -14,6 +13,8 @@ import {
     PaginatedRoleResponse,
     RolePermissionsResponse,
     Permission,
+    PaginatedUserResponse,
+    ErrorDetails,
 } from '@/types/ui';
 
 const initialState: RoleState = {
@@ -92,6 +93,7 @@ export const createRole = createAsyncThunk<RoleResponse, RolePayload, { rejectVa
     }
 );
 
+
 // Update role SLice
 export const updateRole = createAsyncThunk<RoleResponse, { id: number; data: RolePayload }, { rejectValue: ErrorResponse }>(
     'role/update',
@@ -109,6 +111,7 @@ export const updateRole = createAsyncThunk<RoleResponse, { id: number; data: Rol
     }
 );
 
+
 // Delete role
 export const deleteRole = createAsyncThunk<void, number, { rejectValue: ErrorResponse }>(
     'role/delete',
@@ -124,6 +127,7 @@ export const deleteRole = createAsyncThunk<void, number, { rejectValue: ErrorRes
         }
     }
 );
+
 
 // Attach permissions to role
 export const attachPermissions = createAsyncThunk<Role, PermissionAttachPayload, { rejectValue: ErrorResponse }>(
@@ -152,6 +156,7 @@ export const attachPermissions = createAsyncThunk<Role, PermissionAttachPayload,
     }
 );
 
+
 // Detach permissions
 export const detachPermissions = createAsyncThunk<Role, PermissionAttachPayload, { rejectValue: ErrorResponse }>(
     'role/detachPermissions',
@@ -173,15 +178,20 @@ export const detachPermissions = createAsyncThunk<Role, PermissionAttachPayload,
     }
 );
 
-// Attach users
+
+// Update attachUsers in your roleSlice
 export const attachUsers = createAsyncThunk<void, RoleUserAttachPayload, { rejectValue: ErrorResponse }>(
     'role/attachUsers',
     async ({ id, users }, { rejectWithValue }) => {
         try {
             const token = Cookies.get('token');
-            await api.post(`/roles/${id}/attach-users`, { users }, {
+            const response = await api.post(`/roles/${id}/attach-users`, {
+                user_ids: users,
+                role_id: id
+            }, {
                 headers: { Authorization: `Bearer ${token}` },
             });
+            return response.data;
         } catch (err) {
             const error = err as AxiosError<ErrorResponse>;
             return rejectWithValue(error.response?.data || { message: 'Attach users failed' });
@@ -189,21 +199,26 @@ export const attachUsers = createAsyncThunk<void, RoleUserAttachPayload, { rejec
     }
 );
 
-// Detach users
+
+// Update detachUsers in your roleSlice
 export const detachUsers = createAsyncThunk<void, RoleUserAttachPayload, { rejectValue: ErrorResponse }>(
     'role/detachUsers',
     async ({ id, users }, { rejectWithValue }) => {
         try {
             const token = Cookies.get('token');
-            await api.post(`/roles/${id}/detach`, { users }, {
+            const response = await api.post(`/roles/${id}/detach`, {
+                user_ids: users
+            }, {
                 headers: { Authorization: `Bearer ${token}` },
             });
+            return response.data;
         } catch (err) {
             const error = err as AxiosError<ErrorResponse>;
             return rejectWithValue(error.response?.data || { message: 'Detach users failed' });
         }
     }
 );
+
 
 // Fetch permissions of a role
 export const fetchRolePermissions = createAsyncThunk<Permission[], number, { rejectValue: ErrorResponse }>(
@@ -222,22 +237,42 @@ export const fetchRolePermissions = createAsyncThunk<Permission[], number, { rej
     }
 );
 
+
 // Fetch users of a role
-export const fetchRoleUsers = createAsyncThunk<number[], number, { rejectValue: ErrorResponse }>(
+export const fetchRoleUsers = createAsyncThunk<PaginatedUserResponse, number, { rejectValue: ErrorResponse }>(
     'role/fetchRoleUsers',
     async (id, { rejectWithValue }) => {
         try {
             const token = Cookies.get('token');
-            const response = await api.get(`/roles/${id}/users`, {
-                headers: { Authorization: `Bearer ${token}` },
-            });
-            return response.data.users; // Adjust based on API response shape
+            const response = await api.get(`/roles/${id}/users`);
+            return response.data;
         } catch (err) {
             const error = err as AxiosError<ErrorResponse>;
             return rejectWithValue(error.response?.data || { message: 'Fetch role users failed' });
         }
     }
 );
+
+
+//Delete Multiple Roles
+export const deleteMultipleRoles = createAsyncThunk<void, number[], { rejectValue: ErrorDetails }>(
+    'role/deleteMultiple',
+    async (ids, { rejectWithValue }) => {
+      try {
+        const token = Cookies.get('token');
+        await api.delete('/roles/destroy-multiple', {
+          headers: { Authorization: `Bearer ${token}` },
+          data: { role_ids: ids }
+        });
+      } catch (err) {
+        const error = err as AxiosError<ErrorDetails>;
+        return rejectWithValue({
+          message: error.response?.data?.message || 'Delete multiple roles failed',
+          details: error.response?.data?.details || {}
+        });
+      }
+    }
+  );
 
 //Create slice
 const roleSlice = createSlice({
@@ -368,7 +403,45 @@ const roleSlice = createSlice({
             .addCase(deleteRole.fulfilled, (state, action) => {
                 state.roles = state.roles.filter((r) => r.id !== action.meta.arg);
                 state.successMessage = 'Role deleted successfully';
-            });
+            })// Add these cases to your roleSlice's extraReducers
+            .addCase(attachUsers.pending, (state) => {
+                state.loading = true;
+                state.error = null;
+            })
+            .addCase(attachUsers.fulfilled, (state) => {
+                state.loading = false;
+                state.successMessage = 'Users attached successfully';
+            })
+            .addCase(attachUsers.rejected, (state, action) => {
+                state.loading = false;
+                state.error = action.payload?.message || 'Failed to attach users';
+            })
+            .addCase(detachUsers.pending, (state) => {
+                state.loading = true;
+                state.error = null;
+            })
+            .addCase(detachUsers.fulfilled, (state) => {
+                state.loading = false;
+                state.successMessage = 'Users detached successfully';
+            })
+            .addCase(detachUsers.rejected, (state, action) => {
+                state.loading = false;
+                state.error = action.payload?.message || 'Failed to detach users';
+            })
+            .addCase(deleteMultipleRoles.pending, (state) => {
+                state.loading = true;
+                state.error = null;
+                state.successMessage = null;
+              })
+              .addCase(deleteMultipleRoles.fulfilled, (state) => {
+                state.loading = false;
+                state.successMessage = 'Roles deleted successfully';
+                state.lastDeleted = new Date().toISOString();
+              })
+              .addCase(deleteMultipleRoles.rejected, (state, action) => {
+                state.loading = false;
+                state.error = action.payload?.message || 'Failed to Delete Roles';
+              })
 
     },
 });
