@@ -174,24 +174,8 @@ const Table: React.FC<TableProps> = ({
 
                     {/* Action Buttons */}
                     <div className="flex gap-2">
-                        <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={()=>filterData()}
-                            className="flex items-center gap-2 border border-gray-200 hover:bg-gray-50"
-                        >
-                            <FunnelIcon className="w-4 h-4" />
-                            <span>Filter</span>
-                        </Button>
-                        <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => console.log('Export clicked')}
-                            className="flex items-center gap-2 border border-gray-200 hover:bg-gray-50"
-                        >
-                            <ArrowUpTrayIcon className="w-4 h-4" />
-                            <span>Export</span>
-                        </Button>
+                        
+                       
                         <Button
                             variant="primary"
                             size="sm"
@@ -208,14 +192,7 @@ const Table: React.FC<TableProps> = ({
                 <table className="min-w-full divide-y divide-gray-200">
                     <thead className="bg-gradient-to-r from-gray-50 to-gray-100">
                         <tr>
-                            <th scope="col" className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-10 rounded-tl-xl">
-                                <input
-                                    type="checkbox"
-                                    onChange={handleSelectAll}
-                                    checked={selectedRows.size === paginatedData.length && paginatedData.length > 0}
-                                    className="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
-                                />
-                            </th>
+                           
                             {headers.map((header, index) => (
                                 <th
                                     key={index}
@@ -244,14 +221,7 @@ const Table: React.FC<TableProps> = ({
                                             : 'hover:bg-gray-50'
                                     )}
                                 >
-                                    <td className="px-6 py-4 whitespace-nowrap">
-                                        <input
-                                            type="checkbox"
-                                            onChange={() => handleSelectRow(rowIndex)}
-                                            checked={selectedRows.has(rowIndex)}
-                                            className="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
-                                        />
-                                    </td>
+                                   
                                     {headers.map((header, colIndex) => {
                                         const property = header.toLowerCase().replace(/\s+/g, '');
                                         const value = row[property];

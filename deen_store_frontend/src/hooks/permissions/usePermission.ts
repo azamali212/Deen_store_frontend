@@ -8,9 +8,15 @@ import {
   createPermission,
   clearMessages,
   exportPermissionsToExcel,
+  bulkDeletePermissions,
+  updatePermissionAction,
+  importPermissionsFromExcel,
+  fetchPermissionDistribution
+
 } from '@/features/permissions/permissionsSlice';
 import api from '@/services/api';
 import { color } from 'framer-motion';
+import { Permission } from '@/types/ui';
 
 export const usePermission = () => {
   const dispatch = useDispatch<AppDispatch>();
@@ -32,7 +38,7 @@ export const usePermission = () => {
   );
 
   const addPermission = useCallback(
-    (payload: { name: string; slug?: string; color?:string}) => {
+    (payload: { name: string; slug?: string; color?: string }) => {
       dispatch(createPermission(payload));
     },
     [dispatch]
@@ -47,6 +53,39 @@ export const usePermission = () => {
     dispatch(exportPermissionsToExcel());
   }, [dispatch]);
 
+  const deleteMultiplePermissions = async (ids: number[]) => {
+    return await dispatch(bulkDeletePermissions({ ids })).unwrap();
+  };
+
+  const updatePermission = useCallback(
+    async (id: number, data: { name: string; slug: string }): Promise<Permission> => {
+      return await dispatch(updatePermissionAction({ id, data })).unwrap();
+    },
+    [dispatch]
+  );
+
+ // In your usePermission.ts
+const importFromExcel = useCallback(
+  async (file: File) => {
+      const formData = new FormData();
+      formData.append('file', file);
+      
+      try {
+          const result = await dispatch(importPermissionsFromExcel(formData)).unwrap();
+          // Optionally reload permissions after successful import
+          //dispatch(fetchPermissions());
+          return result;
+      } catch (error) {
+          throw error; // Let the calling component handle the error
+      }
+  },
+  [dispatch]
+);
+
+const fetchDistribution = useCallback(async () => {
+  return await dispatch(fetchPermissionDistribution()).unwrap();
+}, [dispatch]);
+
   return {
     permissions,
     loading,
@@ -58,6 +97,11 @@ export const usePermission = () => {
     loadPermissions,
     addPermission,
     clearMessages: clearAllMessages,
-    exportToExcel
+    exportToExcel,
+    deleteMultiplePermissions,
+    updatePermission,
+    importFromExcel,
+    distribution: useSelector((state: RootState) => state.permissions.distribution),
+    fetchDistribution
   };
 };

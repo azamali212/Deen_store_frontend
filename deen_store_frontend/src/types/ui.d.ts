@@ -17,7 +17,7 @@ export interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> 
 //For Button
 // @/types/ui.ts
 export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
-  variant?: 'primary' | 'text' | 'ghost';
+  ButtonVariant?: 'primary' | 'text' | 'ghost';
   className?: string;
   style?: React.CSSProperties;
   size?: 'sm' | 'md' | 'lg';
@@ -36,11 +36,12 @@ export interface CardProps {
 
 //Chart
 export interface ChartProps {
-  type: 'pie' | 'doughnut' | 'line' | 'bar';  // Added line and bar here
-  data: any;
-  options?: any;
+  type: ChartType;
+  data: ChartData;
+  options?: ChartOptions;
   width?: number;
   height?: number;
+  plugins?: Plugin[];
 }
 
 export interface MobileLayoutProps {
@@ -50,19 +51,38 @@ export interface MobileLayoutProps {
 //Table
 export interface TableProps {
   title?: string;
-    headers: string[];
-    data: any[];
-    customRender?: Record<string, (value: any) => React.ReactNode>;
-    externalPagination?: boolean;
-    currentPage?: number;
-    totalPages?: number;
-    onPageChange?: (page: number) => void;
-    externalSearch?: boolean;
-    searchQuery?: string;
-    onSearchChange?: (query: string) => void;
-    pageSize?: number;
+  headers: string[];
+  headers: TableHeader[];
+  data: any[];
+  customRender?: Record<string, (value: any) => React.ReactNode>;
+  externalPagination?: boolean;
+  currentPage?: number;
+  totalPages?: number;
+  onPageChange?: (page: number) => void;
+  externalSearch?: boolean;
+  searchQuery?: string;
+  onSearchChange?: (query: string) => void;
+  pageSize?: number;
+
+
+  selectable?: boolean;
+  onSelectRow?: (id: number | string, isSelected: boolean) => void;
+  onSelectAll?: (isSelected: boolean) => void;
+  selectedRows?: Set<number>;
 }
 
+export interface TableHeader {
+  id: string;
+  label: string | React.ReactNode;
+  width?: string;
+  name: string;
+  render?: () => React.ReactNode;
+  className?: string;
+}
+
+export interface TableRow {
+  [key: string]: React.ReactNode;
+}
 interface LogoProps {
   src?: string;
   alt?: string;
@@ -258,7 +278,7 @@ export interface LoginResponse {
 export interface ErrorResponse {
   message: string;
   details?: string;
-  status?: number; 
+  status?: number;
 }
 export interface ErrorDetails {
   message: string;
@@ -348,7 +368,7 @@ export interface RoleState {
     total: number;
     per_page: number;
     last_page: number;
-};
+  };
 
 
   roles: Role[];
@@ -381,10 +401,10 @@ export interface PaginatedRoleResponse {
 export interface RolePermissionsResponse {
   data: Permission[];
   meta: {
-      current_page: number;
-      per_page: number;
-      total: number;
-      last_page: number;
+    current_page: number;
+    per_page: number;
+    total: number;
+    last_page: number;
   };
 }
 
@@ -393,9 +413,11 @@ export interface Permission {
   name: string;
   slug: string;
   guard_name: string;
+  created_at?: string;
+  updated_at?: string;
   pivot?: {
-      role_id: number;
-      permission_id: number;
+    role_id: number;
+    permission_id: number;
   };
 }
 
@@ -407,7 +429,7 @@ export interface Permission {
   guard_name?: string;
   created_at?: string;
   updated_at?: string;
-  slug?: string; 
+  slug?: string;
   category?: string;
   roles?: Role[];
   color?: string; // 
@@ -420,6 +442,18 @@ export interface PermissionState {
   pagination: Pagination;
   successMessage: string | null;
   color?: string;
+  distribution: {
+    data: PermissionDistribution[];
+    loading: boolean;
+    error: string | null;
+  };
+}
+export interface PermissionDistribution {
+  name: string;
+  role_count: number;
+  user_count: number;
+  role_percentage: number;
+  user_percentage: number;
 }
 
 export interface ExtendedPermission extends Permission {
@@ -470,4 +504,24 @@ export interface User {
   avatar?: string;
 }
 
+interface ApiErrorResponse {
+  message?: string;
+  error?: string;
+  errors?: Record<string, string[]>;
+}
+
+export interface BulkDeleteResponse {
+  success: boolean;
+  message: string;
+  data: {
+    ids: number[];          // IDs that were successfully deleted
+    deleted_count: number;  // Number of successfully deleted items
+    failed_ids: number[];   // IDs that failed to delete
+    skipped_ids: number[];  // IDs that were skipped
+  };
+  metadata?: {
+    total_requested: number;
+    timestamp: string;
+  };
+}
 

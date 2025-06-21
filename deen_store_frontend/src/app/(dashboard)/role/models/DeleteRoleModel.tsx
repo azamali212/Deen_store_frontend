@@ -65,7 +65,7 @@ const DeleteRoleModel: React.FC<DeleteRoleModelProps> = ({
           </h3>
 
           <p className="text-sm text-gray-600 dark:text-gray-300 text-center mb-6 leading-relaxed">
-            You are about to delete the role <span className="font-semibold text-red-500 dark:text-red-400">"{roleName}"</span>. 
+            You are about to delete the role <span className="font-semibold text-red-500 dark:text-red-400">"{roleName}"</span>.
             <br />
             This action <span className="font-bold">cannot</span> be undone.
           </p>
