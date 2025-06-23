@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@plugin "daisyui";
 
 @layer base {
   :root {
@@ -6,6 +7,14 @@
     --background-light: 238, 242, 248;
     --foreground: 0 0 0;
     --accent: 212 187 169;
+    --sidebar-color-1: 255 255 255;
+    --sidebar-color-2: 59 130 246;
+    /* ... other colors */
+  
+    /* Initialize default values */
+    --sidebar-bg: var(--sidebar-color-1);
+    --theme-color: var(--sidebar-color-1);
+    
   
     --card: 245 245 245;
     --muted: 100 116 139;
@@ -71,6 +80,10 @@
     --progress-stock: 239 68 68;
   }
 
+  .dashboard-background {
+    background-color: rgb(var(--dashboard--background));
+  }
+
   .dark {
     --background: 17 24 39;
     --background-light: 17 24 39;
@@ -84,7 +97,9 @@
     --nav: 30, 41, 56;
     --dashboard--background: 17 24 39;
     --main--chart--card--background: 255, 250, 250;
-    --table--color: 255, 250, 250;
+    --table--color: 17 24 39;
+
+
 
     --fab-color: 212 187 169;
     --fab-hover: 220 195 175;

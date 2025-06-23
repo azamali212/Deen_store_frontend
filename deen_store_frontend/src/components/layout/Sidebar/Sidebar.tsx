@@ -94,7 +94,7 @@ const Sidebar: React.FC<SidebarProps & {
             label="Users"
             collapsed={collapsed}
             items={[
-              { label: 'All Users', href: '/dashboard/users' },
+              { label: 'All Users', href: ROUTES.USER },
               { label: 'Roles', href: '/dashboard/roles' },
             ]}
           />

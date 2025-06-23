@@ -7,6 +7,7 @@ const ROUTES = {
     PROFILE: '/profile',
     ROLE: '/role',
     PERMISSIONS: '/permissions',
+    USER: '/user',
   };
   
   export default ROUTES;

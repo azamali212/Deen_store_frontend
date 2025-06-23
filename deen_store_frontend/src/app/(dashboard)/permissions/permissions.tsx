@@ -6,8 +6,6 @@ import Button from '@/components/ui/buttons/button';
 import { motion } from 'framer-motion';
 import Tooltip from '@/components/ui/tooltip/Tooltip';
 import PermissionChart from './PermissionChart';
-
-import SearchBar from '@/components/ui/search/SearchBar';
 import { usePermission } from '@/hooks/permissions/usePermission';
 import Spinner from '@/components/ui/spinner/Spinner';
 import { ExtendedPermission } from '@/types/ui';
@@ -17,8 +15,6 @@ import { toast } from 'react-toastify';
 import ConfirmationDialog from '@/components/ui/dialog/ConfirmationDialog';
 import EditPermissionModel from './models/EditPermissionModel';
 import PermissionsModel from './models/PermissionsModel';
-import { importPermissionsFromExcel } from '@/features/permissions/permissionsSlice';
-
 const Permission = () => {
     const [createModalOpen, setCreateModalOpen] = useState(false);
     const [editModalOpen, setEditModalOpen] = useState(false);

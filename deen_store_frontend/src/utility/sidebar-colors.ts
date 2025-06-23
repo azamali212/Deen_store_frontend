@@ -1,28 +1,57 @@
+// utility/sidebar-colors.ts
 export const SidebarColors = {
   getCurrentColor: () => {
     if (typeof window === 'undefined') return '1';
     return localStorage.getItem('sidebar-color') || '1';
   },
 
-  applyColor: (colorId: string) => {
+  applyColor: (colorId: string, callback?: () => void) => {
     if (typeof window === 'undefined') return;
+    
+    // Apply colors to root
     document.documentElement.style.setProperty(
       '--sidebar-bg',
       `var(--sidebar-color-${colorId})`
     );
+    
+    document.documentElement.style.setProperty(
+      '--theme-color',
+      `var(--sidebar-color-${colorId})`
+    );
+    
+    // Update dashboard background
+    document.documentElement.style.setProperty(
+      '--dashboard--background',
+      `var(--sidebar-color-${colorId})`
+    );
+    
     localStorage.setItem('sidebar-color', colorId);
+    
+    if (callback) callback();
   },
 
-  initializeColor: () => {
+  initializeColor: (callback?: () => void) => {
     if (typeof window === 'undefined') return '1';
     const colorId = localStorage.getItem('sidebar-color') || '1';
+    
     document.documentElement.style.setProperty(
       '--sidebar-bg',
       `var(--sidebar-color-${colorId})`
     );
+    
+    document.documentElement.style.setProperty(
+      '--theme-color',
+      `var(--sidebar-color-${colorId})`
+    );
+    
+    document.documentElement.style.setProperty(
+      '--dashboard--background',
+      `var(--sidebar-color-${colorId})`
+    );
+    
+    if (callback) callback();
     return colorId;
   },
-
   getAvailableColors: () => {
     return [
       { id: '1', name: 'Default', light: 'rgb(255 255 255)', dark: 'rgb(17 24 39)' },

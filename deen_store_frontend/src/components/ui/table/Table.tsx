@@ -147,7 +147,7 @@ const Table: React.FC<TableProps> = ({
     }
 
     return (
-        <div className="w-full p-6 bg-white rounded-xl shadow-sm border border-gray-100">
+        <div className="w-full p-6 bg-[rgb(var(--dashboard--background))] rounded-xl shadow-sm border border-gray-100">
             {/* Table Header */}
             <div className="mb-6 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
                 <div>
@@ -188,8 +188,8 @@ const Table: React.FC<TableProps> = ({
             </div>
 
             {/* Table */}
-            <div className="overflow-x-auto rounded-xl border border-gray-200 shadow-xs">
-                <table className="min-w-full divide-y divide-gray-200">
+            <div className="overflow-x-auto rounded-xl border bg-[rgb(var(--dashboard--background))] border-gray-200 shadow-xs">
+                <table className="min-w-full bg-[rgb(var(--dashboard--background))] divide-y divide-gray-200">
                     <thead className="bg-gradient-to-r from-gray-50 to-gray-100">
                         <tr>
                            
@@ -197,7 +197,7 @@ const Table: React.FC<TableProps> = ({
                                 <th
                                     key={index}
                                     scope="col"
-                                    className="px-6 py-4 text-left text-xs font-medium text-gray-700 uppercase tracking-wider cursor-pointer group"
+                                    className="px-6 bg-[rgb(var(--dashboard--background))] py-4 text-left text-xs font-medium text-gray-700 uppercase tracking-wider cursor-pointer group"
                                     onClick={() => requestSort(header)}
                                 >
                                     <div className="flex items-center justify-between">
@@ -209,9 +209,10 @@ const Table: React.FC<TableProps> = ({
                             
                         </tr>
                     </thead>
-                    <tbody className="bg-white divide-y divide-gray-200">
+                    <tbody className="bg-[rgb(var(--dashboard--background))] divide-y divide-gray-200">
                         {paginatedData.length > 0 ? (
                             paginatedData.map((row, rowIndex) => (
+                                
                                 <tr
                                     key={rowIndex}
                                     className={clsx(

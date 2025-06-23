@@ -54,15 +54,23 @@ export interface TableProps {
   headers: string[];
   headers: TableHeader[];
   data: any[];
-  customRender?: Record<string, (value: any) => React.ReactNode>;
+  data: TableRow[];
+  customRender?: {
+    [key: string]: (value: any, row?: any) => ReactNode;
+  };
   externalPagination?: boolean;
   currentPage?: number;
   totalPages?: number;
+  rowProps?: (row: any) => React.HTMLAttributes<HTMLTableRowElement>;
   onPageChange?: (page: number) => void;
   externalSearch?: boolean;
   searchQuery?: string;
   onSearchChange?: (query: string) => void;
   pageSize?: number;
+  rowExpandable?: boolean;
+  expandedRows?: Set<string>;
+  onRowExpand?: (id: string) => void;
+  expandedContent?: (row: any) => React.ReactNode;
 
 
   selectable?: boolean;
@@ -81,8 +89,25 @@ export interface TableHeader {
 }
 
 export interface TableRow {
-  [key: string]: React.ReactNode;
+  id: string;
+  user: {
+    name: string;
+    email: string;
+    created_at: string;
+    avatar: string;
+  };
+  contact: {
+    email: string;
+    verified: boolean;
+  };
+  location: string;
+  roles?: Role[];
+  status: string;
+  last_activity: string | null;
+  actions: {};
 }
+
+
 interface LogoProps {
   src?: string;
   alt?: string;
@@ -189,16 +214,21 @@ export interface SidebarProps {
   setCollapsed: React.Dispatch<React.SetStateAction<boolean>>;
 }
 
-export interface TooltipProps {
+interface TooltipProps {
   children: ReactElement<{
     onMouseEnter?: (e: MouseEvent) => void;
     onMouseLeave?: (e: MouseEvent) => void;
     onFocus?: (e: FocusEvent) => void;
     onBlur?: (e: FocusEvent) => void;
   }>;
-  content: string;
+  content: React.ReactNode; // Changed from string to React.ReactNode
   side?: 'top' | 'right' | 'bottom' | 'left';
   disabled?: boolean;
+  interactive?: boolean; // Add this if you want interactive tooltips
+  placement?: 'top' | 'right' | 'bottom' | 'left'; // Alias for 'side'
+  delayDuration?: number; // 
+  className?: string; // Add className for custom styles
+  maxHeight?: string; // Add maxHeight prop for tooltip content
 }
 
 
@@ -257,13 +287,7 @@ export interface PaginationProps {
 
 
 //For Redux
-export interface User {
-  id: number;
-  token?: string;
-  name: string;
-  email: string;
-  // add any more fields returned by backend
-}
+
 
 export interface LoginPayload {
   email: string;
@@ -311,12 +335,15 @@ export interface Role {
   id: number;
   name: string;
   slug: string;
-  permissions?: Array<string | Permission>;
-  users?: string[];
-  title?: string;
-  description?: string;
-  userCount?: number;
-  color?: string;
+  guard_name: string;
+  created_at: string;
+  updated_at: string;
+  pivot: {
+    model_type: string;
+    model_id: string;
+    role_id: number;
+  };
+  permissions: Permission[];
 }
 
 interface RoleData {
@@ -413,9 +440,9 @@ export interface Permission {
   name: string;
   slug: string;
   guard_name: string;
-  created_at?: string;
-  updated_at?: string;
-  pivot?: {
+  created_at: string;
+  updated_at: string;
+  pivot: {
     role_id: number;
     permission_id: number;
   };
@@ -472,37 +499,8 @@ export interface ExtendedPermission extends Permission {
 }
 
 
-//User Interface ********************************************
-export interface UserPagination {
-  current_page: number;
-  last_page: number;
-  per_page: number;
-  total: number;
-}
 
 
-
-export interface UserState {
-  users: UserType[];
-  loading: boolean;
-  error: string | null;
-  pagination: Pagination;
-  successMessage: string | null;
-  selectedUser: UserType | null;
-  // Optional filters you might add later:
-  // filters?: {
-  //     search?: string;
-  //     status?: string;
-  //     role?: string;
-  // };
-}
-
-export interface User {
-  id: string; // or number - must be consistent
-  name: string;
-  email: string;
-  avatar?: string;
-}
 
 interface ApiErrorResponse {
   message?: string;
@@ -525,3 +523,51 @@ export interface BulkDeleteResponse {
   };
 }
 
+// User Interfaces
+export interface UserPagination {
+  current_page: number;
+  last_page: number;
+  per_page: number;
+  total: number;
+}
+
+export interface UserStats {
+  totalUsers: number;
+  activeUsers: number;
+  inactiveUsers: number;
+  adminUsers: number;
+  customerUsers: number;
+}
+
+export interface User {
+  id: string;
+  name: string;
+  email: string;
+  location?: string;
+  roles: Role[];
+  email_verified_at?: string | null;
+  confirm_password?: string | null;
+  stripe_id?: string | null;
+  pm_type?: string | null;
+  pm_last_four?: string | null;
+  trial_ends_at?: string | null;
+  default_payment_method?: string | null;
+  deleted_at?: string | null;
+  email_verification_token?: string | null;
+  status: 'active' | 'inactive'; // Add status with specific values
+  last_login_at?: string | null;
+  account_type: 'admin' | 'customer' | null; // Add account_type
+  created_at: string;
+  updated_at: string;
+  roles?: Role[];
+}
+
+export interface UserState {
+  users: User[];
+  loading: boolean;
+  error: string | null;
+  pagination: UserPagination;
+  successMessage: string | null;
+  selectedUser: User | null;
+  stats: UserStats; // Add stats to UserState
+}

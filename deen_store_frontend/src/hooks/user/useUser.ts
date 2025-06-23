@@ -3,8 +3,8 @@
 import { useDispatch, useSelector } from 'react-redux';
 import { useCallback } from 'react';
 import { RootState, AppDispatch } from '@/store';
-import { clearMessages, fetchUsers, resetUserState, setSelectedUser } from '@/features/user/userSlice';
-
+import { clearMessages, fetchSingleUser, fetchUsers, resetUserState, setSelectedUser } from '@/features/user/userSlice';
+import { User } from '@/types/ui';
 
 export const useUser = () => {
     const dispatch = useDispatch<AppDispatch>();
@@ -15,12 +15,13 @@ export const useUser = () => {
         error,
         successMessage,
         pagination,
-        selectedUser
+        selectedUser,
+        stats
     } = useSelector((state: RootState) => state.user);
 
     const loadUsers = useCallback(
         (page?: number, search?: string, filters?: Record<string, string>) => {
-            dispatch(fetchUsers({ 
+            return dispatch(fetchUsers({ 
                 page: page || 1, 
                 search: search || '',
                 filters: filters || {}
@@ -29,8 +30,15 @@ export const useUser = () => {
         [dispatch]
     );
 
+    const loadSingleUser = useCallback(
+        (userId: string, relations?: string) => {
+          return dispatch(fetchSingleUser({ userId, relations }));
+        },
+        [dispatch]
+      );
+
     const selectUser = useCallback(
-        (user:  | null) => {
+        (user: User | null) => {
             dispatch(setSelectedUser(user));
         },
         [dispatch]
@@ -52,6 +60,7 @@ export const useUser = () => {
         successMessage,
         selectedUser,
         pagination,
+        stats,
         
         // Pagination
         currentPage: pagination.current_page,
@@ -63,6 +72,7 @@ export const useUser = () => {
         loadUsers,
         selectUser,
         clearMessages: clearAllMessages,
-        resetUsers
+        resetUsers,
+        loadSingleUser
     };
 };

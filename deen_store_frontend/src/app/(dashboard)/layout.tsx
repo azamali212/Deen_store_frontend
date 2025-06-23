@@ -36,7 +36,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
   }
 
   useEffect(() => {
-    applySavedTheme();
+    SidebarColors.initializeColor();
   }, []);
 
   // ✅ Dynamically determine active breadcrumb
@@ -106,7 +106,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
 
       {/* Main Content Area */}
       <div
-        className="flex-1 transition-all duration-300 min-w-0"
+        className="flex-1  transition-all duration-300 min-w-0"
         style={{
           marginLeft: collapsed ? '80px' : `${SIDEBAR_WIDTH}px`,
           paddingTop: `${NAVBAR_HEIGHT}px`,
@@ -114,7 +114,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
       >
         <Navbar collapsed={collapsed} toggleSidebar={toggleSidebar} />
 
-        <div className="w-full z-1 shadow-sm bg-[rgb(var(--breadcrumb--color))]">
+        <div className="w-full z-1 shadow-sm bg-[rgb(var(--dashboard--background))]">
           <div className="flex flex-col md:flex-row md:items-center md:justify-between p-4">
             <Breadcrumb items={breadcrumbItems} />
           </div>
