@@ -1,8 +1,7 @@
 'use client';
-
 import Table from '@/components/ui/table/Table';
 import { Edit, Trash2, RefreshCw, Mail, MapPin, User, Shield, Clock, CheckCircle, XCircle, Eye } from 'lucide-react';
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import Button from '@/components/ui/buttons/button';
 import { ArrowDownTrayIcon, ArrowUpTrayIcon } from '@heroicons/react/24/solid';
 import Avatar from '@/components/avatar/Avatar';
@@ -34,7 +33,7 @@ type LocalRole = UIRole & {
 
 type UserRole = LocalRole | string;
 
-interface TableUser {
+export interface TableUser {
     id: string;
     user: {
         name: string;
@@ -42,26 +41,29 @@ interface TableUser {
         created_at: string;
         avatar: string;
     };
-    contact: {
+    contact?: {  // Make this optional
         email: string;
         verified: boolean;
     };
     location: string;
     role: string;
-    roles: UserRole[];
+    roles: (LocalRole | string)[];  // This matches your UserRole type
     permissions: LocalPermission[];
     status: 'active' | 'inactive';
     last_activity: string | null;
-    actions: Record<string, never>;
+    email_verified_at?: string | null; 
+    last_login_at?: string | null; 
+    actions: {
+        id: string;
+    };
 }
-
-
 
 const UserTable = () => {
     const { users, loading, error, pagination, loadUsers } = useUser();
     const [localLoading, setLocalLoading] = React.useState(false);
     const [selectedUser, setSelectedUser] = React.useState<TableUser | null>(null);
     const [showUserModal, setShowUserModal] = React.useState(false);
+    const [selectedUserId, setSelectedUserId] = React.useState<string | null>(null);
 
     const formatDate = (dateString: string | null | undefined) => {
         if (!dateString) return 'Never';
@@ -76,82 +78,62 @@ const UserTable = () => {
     };
 
     // Transform data with proper type safety
-    const tableData: TableUser[] = users.map(user => {
-        // Handle last_activity explicitly to ensure it's never undefined
-        const lastActivity = user.last_login_at ?? null;
+    const tableData: TableUser[] = users
+        .filter(user => !!user.id) // Filter out users without IDs first
+        .map(user => {
+            // Handle last_activity explicitly to ensure it's never undefined
+            const lastActivity = user.last_login_at ?? null;
 
-        // Determine role name
-        let roleName = 'User';
-        if (Array.isArray(user.roles)) {
-            if (user.roles.length > 0) {
-                const firstRole = user.roles[0];
-                roleName = typeof firstRole === 'string' ? firstRole : firstRole?.name || 'User';
+            // Determine role name
+            let roleName = 'User';
+            if (Array.isArray(user.roles)) {
+                if (user.roles.length > 0) {
+                    const firstRole = user.roles[0];
+                    roleName = typeof firstRole === 'string' ? firstRole : firstRole?.name || 'User';
+                }
             }
-        }
 
-        // Extract permissions safely
-        const permissions = Array.isArray(user.roles)
-            ? user.roles.flatMap(role =>
-                typeof role === 'object' && role !== null && 'permissions' in role
-                    ? (role as LocalRole).permissions
-                    : [])
-            : [];
+            // Extract permissions safely
+            const permissions = Array.isArray(user.roles)
+                ? user.roles.flatMap(role =>
+                    typeof role === 'object' && role !== null && 'permissions' in role
+                        ? (role as LocalRole).permissions
+                        : [])
+                : [];
 
-        return {
-            id: user.id,
-            user: {
-                name: user.name,
-                email: user.email,
-                created_at: user.created_at,
-                avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(user.name)}&background=random`
-            },
-            contact: {
-                email: user.email,
-                verified: !!user.email_verified_at
-            },
-            location: user.location || 'Unknown',
-            role: roleName,
-            roles: user.roles || [],
-            permissions,
-            status: user.status as 'active' | 'inactive',
-            last_activity: lastActivity,
-            actions: {}
+            return {
+                id: user.id,
+                user: {
+                    name: user.name,
+                    email: user.email,
+                    created_at: user.created_at,
+                    avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(user.name)}&background=random`
+                },
+                contact: {
+                    email: user.email,
+                    verified: !!user.email_verified_at
+                },
+                location: user.location || 'Unknown',
+                role: roleName,
+                roles: user.roles || [],
+                permissions,
+                status: user.status as 'active' | 'inactive',
+                last_activity: lastActivity,
+                actions: {
+                    id: user.id
+                }
+            };
+        });
+
+        const handleViewClick = (userData: TableUser) => {
+            setSelectedUser({
+                ...userData,
+                email_verified_at: userData.contact?.verified ? new Date().toISOString() : null,
+                last_login_at: userData.last_activity
+            });
+            setShowUserModal(true);
         };
-    });
 
-    const handleShowUser = () => {
-        // Create dummy user data
-        const dummyUser: TableUser = {
-          id: '1',
-          user: {
-            name: 'John Doe',
-            email: 'john@example.com',
-            created_at: new Date().toISOString(),
-            avatar: 'https://ui-avatars.com/api/?name=John+Doe&background=random'
-          },
-          contact: {
-            email: 'john@example.com',
-            verified: true
-          },
-          location: 'New York',
-          role: 'Admin',
-          roles: ["Role"],
-          permissions: [],
-          status: 'active',
-          last_activity: new Date().toISOString(),
-          actions: {}
-        };
-        
-        setSelectedUser(dummyUser);
-        setShowUserModal(true);
-      };
-
-    const handleEditClick = (userData: TableUser) => {
-        console.log('Opening modal for user:', userData);
-        setSelectedUser(userData);
-        setShowUserModal(true);
-        console.log('Modal state should be open now');
-      };
     const handlePageChange = React.useCallback(async (page: number) => {
         setLocalLoading(true);
         try {
@@ -233,16 +215,18 @@ const UserTable = () => {
                         <div className="flex flex-col">
                             <div className="flex items-center gap-2">
                                 <Mail className="w-4 h-4 text-gray-500 dark:text-gray-400" />
-                                <span className="text-sm text-gray-700 dark:text-gray-300">{value.email}</span>
+                                <span className="text-sm text-gray-700 dark:text-gray-300">
+                                    {value?.email || 'No email'}
+                                </span>
                             </div>
                             <div className="flex items-center gap-2 mt-1">
-                                {value.verified ? (
+                                {value?.verified ? (
                                     <CheckCircle className="w-4 h-4 text-green-500" />
                                 ) : (
                                     <XCircle className="w-4 h-4 text-red-500" />
                                 )}
                                 <span className="text-xs text-gray-500 dark:text-gray-400">
-                                    {value.verified ? 'Verified' : 'Unverified'}
+                                    {value?.verified ? 'Verified' : 'Unverified'}
                                 </span>
                             </div>
                         </div>
@@ -395,33 +379,45 @@ const UserTable = () => {
                             </span>
                         </div>
                     ),
-                    actions: () => (
-                        <div className="flex gap-2">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="text-gray-500 hover:text-purple-500 dark:hover:text-purple-400"
-                            onClick={handleShowUser}
-                          >
-                            <Eye className="w-4 h-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="text-gray-500 hover:text-red-500 dark:hover:text-red-400"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </Button>
-                        </div>
-                      )
+                    // Update the actions custom render to this:
+                    // Change your actions custom render to:
+                    actions: (value, userData) => {
+                        return (
+                            <div className="flex gap-2">
+                                <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="text-gray-500 hover:text-purple-500 dark:hover:text-purple-400"
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleViewClick(userData);
+                                    }}
+                                >
+                                    <Eye className="w-4 h-4" />
+                                </Button>
+                                <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="text-gray-500 hover:text-red-500 dark:hover:text-red-400"
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        console.log('Delete clicked for', value.id);
+                                    }}
+                                >
+                                    <Trash2 className="w-4 h-4" />
+                                </Button>
+                            </div>
+                        );
+                    }
                 }}
             />
             {/* Modal should be here at the root level */}
-            {showUserModal && selectedUser && (
+            {showUserModal && (
                 <ShowUserModel
                     isModalOpen={showUserModal}
+                    userId={selectedUser?.id}
+                    userData={selectedUser} // Pass the data directly
                     setIsModalOpen={setShowUserModal}
-                    user={selectedUser}
                 />
             )}
         </div>

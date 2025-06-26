@@ -108,8 +108,8 @@ export const fetchSingleUser = createAsyncThunk<
                 headers: { Authorization: `Bearer ${token}` },
             });
 
-            // The response structure matches your example
-            return response.data.data.user;
+            // Properly extract the user data from the nested structure
+            return response.data.data.original.data.user;
         } catch (err) {
             const error = err as AxiosError<ErrorResponse>;
             if (error.response) {

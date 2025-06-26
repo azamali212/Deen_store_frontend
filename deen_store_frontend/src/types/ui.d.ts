@@ -545,7 +545,7 @@ export interface User {
   email: string;
   location?: string;
   roles: Role[];
-  email_verified_at?: string | null;
+  
   confirm_password?: string | null;
   stripe_id?: string | null;
   pm_type?: string | null;
@@ -555,11 +555,26 @@ export interface User {
   deleted_at?: string | null;
   email_verification_token?: string | null;
   status: 'active' | 'inactive'; // Add status with specific values
-  last_login_at?: string | null;
+  
   account_type: 'admin' | 'customer' | null; // Add account_type
   created_at: string;
   updated_at: string;
-  roles?: Role[];
+  
+  last_login_at?: string;
+    email_verified_at?: string | null;
+    location?: string;
+    roles?: Array<{
+        id: number;
+        name: string;
+        permissions?: Array<{
+            id: number;
+            name: string;
+        }>;
+    }>;
+    permissions?: Array<{
+        id: number;
+        name: string;
+    }>;
 }
 
 export interface UserState {
@@ -570,4 +585,7 @@ export interface UserState {
   successMessage: string | null;
   selectedUser: User | null;
   stats: UserStats; // Add stats to UserState
+  roles?: Role[];
+    permissions?: Permission[];
+    location?: string;
 }
