@@ -77,7 +77,13 @@ export interface TableProps {
   onSelectRow?: (id: number | string, isSelected: boolean) => void;
   onSelectAll?: (isSelected: boolean) => void;
   selectedRows?: Set<number>;
+  loading?: boolean; 
+  rowClassName?: string;
+  headerClassName?: string;
+  cellClassName?: string;
+  pageSize?: number;
 }
+
 
 export interface TableHeader {
   id: string;
@@ -90,23 +96,28 @@ export interface TableHeader {
 
 export interface TableRow {
   id: string;
-  user: {
-    name: string;
-    email: string;
-    created_at: string;
-    avatar: string;
-  };
-  contact: {
-    email: string;
-    verified: boolean;
-  };
-  location: string;
-  roles?: Role[];
+  name: string;
+  email: string;
+  created_at: string;
   status: string;
   last_activity: string | null;
-  actions: {};
+  user: {
+      name: string;
+      email: string;
+      created_at: string;
+      avatar: string;
+  };
+  contact: {
+      email: string;
+      verified: boolean;
+  };
+  location: string;
+  roles: any[];
+  permissions: any[];
+  actions: {
+      id: string;
+  };
 }
-
 
 interface LogoProps {
   src?: string;
@@ -545,7 +556,7 @@ export interface User {
   email: string;
   location?: string;
   roles: Role[];
-  
+
   confirm_password?: string | null;
   stripe_id?: string | null;
   pm_type?: string | null;
@@ -555,26 +566,28 @@ export interface User {
   deleted_at?: string | null;
   email_verification_token?: string | null;
   status: 'active' | 'inactive'; // Add status with specific values
-  
+
   account_type: 'admin' | 'customer' | null; // Add account_type
   created_at: string;
   updated_at: string;
-  
+
   last_login_at?: string;
-    email_verified_at?: string | null;
-    location?: string;
-    roles?: Array<{
-        id: number;
-        name: string;
-        permissions?: Array<{
-            id: number;
-            name: string;
-        }>;
-    }>;
+  email_verified_at?: string | null;
+  location?: string;
+  roles?: Array<{
+    id: number;
+    name: string;
     permissions?: Array<{
-        id: number;
-        name: string;
+      id: number;
+      name: string;
     }>;
+  }>;
+  permissions?: Array<{
+    id: number;
+    name: string;
+  }>;
+  avatar?: string;
+  account_type?: string;
 }
 
 export interface UserState {
@@ -586,6 +599,48 @@ export interface UserState {
   selectedUser: User | null;
   stats: UserStats; // Add stats to UserState
   roles?: Role[];
-    permissions?: Permission[];
-    location?: string;
+  permissions?: Permission[];
+  location?: string;
 }
+
+export interface DetailedUser extends User {
+  roles: Array<{
+    id: number;
+    name: string;
+    permissions: Array<{
+      id: number;
+      name: string;
+      slug?: string; // Make slug optional
+    }>;
+  }>;
+  permissions: Array<{
+    id: number;
+    name: string;
+    slug?: string; // Make slug optional
+  }>;
+  avatar?: string;
+}
+
+export interface TableUser {
+  id: string;
+  user: {
+    name: string;
+    email: string;
+    created_at: string;
+    avatar: string;
+  };
+  contact: {
+    email: string;
+    verified: boolean;
+  };
+  location: string;
+  role: string;
+  roles: any[];
+  permissions: any[];
+  status: 'active' | 'inactive';
+  last_activity: string | null;
+  actions: {
+    id: string;
+  };
+}
+

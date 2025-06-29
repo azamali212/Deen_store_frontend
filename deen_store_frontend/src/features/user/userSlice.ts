@@ -93,7 +93,6 @@ export const fetchUsers = createAsyncThunk<
     }
 );
 
-//Show Sgingle User tunk slice
 export const fetchSingleUser = createAsyncThunk<
     User,
     { userId: string; relations?: string },
@@ -102,20 +101,43 @@ export const fetchSingleUser = createAsyncThunk<
     'users/fetchSingleUser',
     async ({ userId, relations = 'roles,permissions' }, { rejectWithValue }) => {
         try {
+            if (!userId) {
+                throw new Error('User ID is required');
+            }
+
             const token = Cookies.get('token');
-            const response = await api.get(`/user/${userId}`, {
+            const response = await api.get(`/users/${userId}`, {
                 params: { relations },
                 headers: { Authorization: `Bearer ${token}` },
             });
 
-            // Properly extract the user data from the nested structure
-            return response.data.data.original.data.user;
+            // Handle different response structures
+            let userData;
+            if (response.data.data?.original?.data?.user) {
+                userData = response.data.data.original.data.user;
+            } else if (response.data.data) {
+                userData = response.data.data;
+            } else {
+                userData = response.data;
+            }
+
+            if (!userData || !userData.id) {
+                throw new Error('Invalid user data structure received');
+            }
+
+            return userData;
         } catch (err) {
             const error = err as AxiosError<ErrorResponse>;
+            console.error('Error fetching single user:', error);
             if (error.response) {
-                return rejectWithValue(error.response.data);
+                return rejectWithValue({
+                    message: error.response.data?.message || 'Failed to fetch user',
+                    details: error.response.data?.details
+                });
             }
-            return rejectWithValue({ message: 'Failed to fetch user' });
+            return rejectWithValue({ 
+                message: 'Network error while fetching user' 
+            });
         }
     }
 );

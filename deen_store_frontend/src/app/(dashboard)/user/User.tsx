@@ -157,8 +157,8 @@ const User = () => {
             </motion.div>
            
             {stats && <UserCard stats={stats} />}
+        
             <UserTable />
-
             {/* Recycle Bin Modal */}
             <RecycleBinUserModel 
                 deletedUsers={deletedUsers} 
