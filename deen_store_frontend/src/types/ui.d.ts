@@ -601,6 +601,22 @@ export interface UserState {
   roles?: Role[];
   permissions?: Permission[];
   location?: string;
+  deletedUsers: DeletedUsersState;
+}
+
+//Delete Interface 
+export interface DeletedUser {
+  user_id: string;
+  user_name: string;
+  roles: string[];
+  deleted_at: string;
+  // Add any other fields your API returns
+}
+
+interface DeletedUsersState {
+  data: DeletedUser[];
+  loading: boolean;
+  error: string | null;
 }
 
 export interface DetailedUser extends User {

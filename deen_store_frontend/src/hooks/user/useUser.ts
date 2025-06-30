@@ -1,13 +1,18 @@
+// hooks/user/useUser.ts
 "use client";
 import { useDispatch, useSelector } from 'react-redux';
 import { useCallback } from 'react';
 import { RootState, AppDispatch } from '@/store';
-import { 
-  clearMessages, 
-  fetchSingleUser, 
-  fetchUsers, 
-  resetUserState, 
-  setSelectedUser 
+import {
+  clearMessages,
+  fetchSingleUser,
+  fetchUsers,
+  resetUserState,
+  setSelectedUser,
+  softDeleteUser,
+  fetchDeletedUsers,
+  forceDeleteUser,
+  restoreDeletedUser
 } from '@/features/user/userSlice';
 import { DetailedUser, TableUser, User } from '@/types/ui';
 
@@ -21,13 +26,14 @@ export const useUser = () => {
     successMessage,
     pagination,
     selectedUser,
-    stats
+    stats,
+    deletedUsers // Make sure this is properly destructured
   } = useSelector((state: RootState) => state.user);
 
   const loadUsers = useCallback(
     (page?: number, search?: string, filters?: Record<string, string>) => {
-      return dispatch(fetchUsers({ 
-        page: page || 1, 
+      return dispatch(fetchUsers({
+        page: page || 1,
         search: search || '',
         filters: filters || {}
       }));
@@ -38,13 +44,12 @@ export const useUser = () => {
   const loadUserDetails = useCallback(
     async (userId: string): Promise<DetailedUser | null> => {
       try {
-        const result = await dispatch(fetchSingleUser({ 
-          userId, 
-          relations: 'roles,permissions' 
+        const result = await dispatch(fetchSingleUser({
+          userId,
+          relations: 'roles,permissions'
         }));
-        
+
         if (fetchSingleUser.fulfilled.match(result)) {
-          // Type assertion with proper conversion
           const userData = result.payload as unknown as DetailedUser;
           return userData;
         }
@@ -72,6 +77,94 @@ export const useUser = () => {
     dispatch(resetUserState());
   }, [dispatch]);
 
+  const deleteUser = useCallback(
+    async (userId: string) => {
+      try {
+        const result = await dispatch(softDeleteUser(userId));
+        if (softDeleteUser.fulfilled.match(result)) {
+          return { success: true, message: result.payload.message };
+        }
+        return {
+          success: false,
+          message: result.payload?.message || 'Failed to delete user'
+        };
+      } catch (error) {
+        console.error('Error deleting user:', error);
+        return {
+          success: false,
+          message: 'An unexpected error occurred'
+        };
+      }
+    },
+    [dispatch]
+  );
+
+  const loadDeletedUsers = useCallback(
+    async () => {
+      try {
+        const result = await dispatch(fetchDeletedUsers());
+        if (fetchDeletedUsers.fulfilled.match(result)) {
+          return { success: true, data: result.payload.data };
+        }
+        return {
+          success: false,
+          message: result.payload?.message || 'Failed to load deleted users'
+        };
+      } catch (error) {
+        console.error('Error loading deleted users:', error);
+        return {
+          success: false,
+          message: 'An unexpected error occurred'
+        };
+      }
+    },
+    [dispatch]
+  );
+
+  const restoreUser = useCallback(
+    async (userId: string) => {
+      try {
+        const result = await dispatch(restoreDeletedUser(userId));
+        if (restoreDeletedUser.fulfilled.match(result)) {
+          return { success: true, message: result.payload.message };
+        }
+        return {
+          success: false,
+          message: result.payload?.message || 'Failed to restore user'
+        };
+      } catch (error) {
+        console.error('Error restoring user:', error);
+        return {
+          success: false,
+          message: 'An unexpected error occurred'
+        };
+      }
+    },
+    [dispatch]
+  );
+
+  const forceDeletePermanently = useCallback(
+    async (userId: string) => {
+      try {
+        const result = await dispatch(forceDeleteUser(userId));
+        if (forceDeleteUser.fulfilled.match(result)) {
+          return { success: true, message: result.payload.message };
+        }
+        return {
+          success: false,
+          message: result.payload?.message || 'Failed to permanently delete user'
+        };
+      } catch (error) {
+        console.error('Error force deleting user:', error);
+        return {
+          success: false,
+          message: 'An unexpected error occurred'
+        };
+      }
+    },
+    [dispatch]
+  );
+
   return {
     // State
     users,
@@ -81,12 +174,17 @@ export const useUser = () => {
     selectedUser: selectedUser as unknown as DetailedUser | null,
     pagination,
     stats,
-    
+    deletedUsers: deletedUsers?.data || [], // Return the data array or empty array if undefined
+
     // Actions
     loadUsers,
     loadUserDetails,
     selectUser,
     clearMessages: clearAllMessages,
     resetUsers,
+    deleteUser,
+    loadDeletedUsers,
+    restoreUser,
+    forceDeleteUser: forceDeletePermanently
   };
 };

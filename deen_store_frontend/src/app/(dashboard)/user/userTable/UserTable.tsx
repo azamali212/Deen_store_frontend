@@ -6,7 +6,6 @@ import React, { useEffect, useState } from 'react';
 import { formatDate } from '@/lib/utils';
 import Button from '@/components/ui/buttons/button';
 import { ArrowDownTrayIcon, ArrowUpTrayIcon } from '@heroicons/react/24/solid';
-import Badge from '@/components/ui/badge/badge';
 import Tooltip from '@/components/ui/tooltip/Tooltip';
 import { motion } from 'framer-motion';
 import Spinner from '@/components/ui/spinner/Spinner';
@@ -14,14 +13,90 @@ import ConfirmationDialog from '@/components/ui/dialog/ConfirmationDialog';
 import { toast } from 'react-toastify';
 import UserCardView from './UserCardView';
 
-const UserTable = () => {
-    const { users, loading, error, loadUsers, pagination } = useUser();
+interface UserTableProps {
+    onOpenRecycleBin?: () => void;  // Add this interface
+}
+
+const UserTable: React.FC<UserTableProps> = ({ onOpenRecycleBin }) => {
+    const { users, loading, error, loadUsers, pagination, deleteUser } = useUser();
     const [currentPage, setCurrentPage] = useState(1);
     const [searchQuery, setSearchQuery] = useState('');
     const [selectedUsers, setSelectedUsers] = useState<string[]>([]);
     const [isBulkDeleteConfirmOpen, setIsBulkDeleteConfirmOpen] = useState(false);
     const [isDeleting, setIsDeleting] = useState(false);
     const [viewMode, setViewMode] = useState<'table' | 'card'>('table');
+    const [itemsPerPage, setItemsPerPage] = useState(8);
+
+    // Enhanced delete handler with animation
+   // Add these imports at the top
+
+
+// Inside your UserTable component, modify the handleDeleteUser function:
+const handleDeleteUser = async (userId: string) => {
+    const result = await deleteUser(userId);
+    if (result.success) {
+        toast.success(result.message, {
+            icon: <Trash2 className="text-purple-500" />,
+        });
+
+        // Get the row element and recycle bin button
+        const row = document.getElementById(`user-row-${userId}`);
+        const recycleBinBtn = document.querySelector('[data-recycle-bin]');
+        
+        if (row && recycleBinBtn) {
+            // Get positions for animation
+            const rowRect = row.getBoundingClientRect();
+            const binRect = recycleBinBtn.getBoundingClientRect();
+            
+            // Create a flying trash element
+            const flyingTrash = document.createElement('div');
+            flyingTrash.className = 'fixed z-50 pointer-events-none';
+            flyingTrash.innerHTML = `
+                <div class="w-8 h-8 bg-purple-500 rounded-full flex items-center justify-center">
+                    <Trash2 className="w-4 h-4 text-white" />
+                </div>
+            `;
+            document.body.appendChild(flyingTrash);
+            
+            // Set initial position
+            flyingTrash.style.left = `${rowRect.left + rowRect.width/2 - 16}px`;
+            flyingTrash.style.top = `${rowRect.top}px`;
+            
+            // Animate to recycle bin
+            flyingTrash.style.transition = 'all 0.8s cubic-bezier(0.65, 0, 0.35, 1)';
+            flyingTrash.style.transform = `translate(
+                ${binRect.left + binRect.width/2 - (rowRect.left + rowRect.width/2)}px,
+                ${binRect.top + binRect.height/2 - rowRect.top}px
+            ) scale(0.5)`;
+            flyingTrash.style.opacity = '0';
+            
+            // Remove after animation and refresh
+            setTimeout(() => {
+                flyingTrash.remove();
+                loadUsers();
+            }, 800);
+            
+            // Also animate the row
+            row.style.transition = 'all 0.3s ease';
+            row.style.opacity = '0';
+            row.style.transform = 'translateX(30px)';
+        } else {
+            // Fallback if positions can't be calculated
+            loadUsers();
+        }
+    } else {
+        toast.error(result.message);
+    }
+};
+
+    const allUsers = [...users];
+    const totalItems = allUsers.length;
+    const totalPages = Math.ceil(totalItems / itemsPerPage);
+
+    const currentUsers = allUsers.slice(
+        (currentPage - 1) * itemsPerPage,
+        currentPage * itemsPerPage
+    );
 
     const getColorForRole = (roleName: string) => {
         const roleColors: Record<string, string> = {
@@ -97,10 +172,7 @@ const UserTable = () => {
         console.log("Edit user", id);
     };
 
-    const handleDeleteUser = (id: string) => {
-        setSelectedUsers([id]);
-        setIsBulkDeleteConfirmOpen(true);
-    };
+
 
     // Custom renderers using the exact property names from the data
     const customRenderers = {
@@ -226,20 +298,20 @@ const UserTable = () => {
                     </Button>
                 </Tooltip>
                 <Tooltip content="Delete user">
-                    <Button
-                        variant="ghost"
-                        size="sm"
-                        className="text-gray-500 hover:text-red-500"
-                        onClick={(e) => {
-                            e.stopPropagation();
-                            if (selectedUsers.length === 0 || !selectedUsers.includes(user.id)) {
-                                setSelectedUsers([user.id]);
-                            }
-                            setIsBulkDeleteConfirmOpen(true);
-                        }}
-                    >
-                        <Trash2 className="w-4 h-4" />
-                    </Button>
+                    <ConfirmationDialog
+                        title="Move to Recycle Bin?"
+                        description="This user will be moved to the recycle bin and can be restored within 30 days."
+                        onConfirm={() => handleDeleteUser(user.id)}
+                        trigger={
+                            <Button
+                                variant="ghost"
+                                size="sm"
+                                className="text-gray-500 hover:text-red-500"
+                            >
+                                <Trash2 className="w-4 h-4" />
+                            </Button>
+                        }
+                    />
                 </Tooltip>
 
             </div>
@@ -343,7 +415,7 @@ const UserTable = () => {
                     <UserCardView
                         users={users.map(user => ({
                             ...user,
-                            email_verified_at: user.email_verified_at || undefined, // Convert null to undefined if needed
+                            email_verified_at: user.email_verified_at || undefined,
                             last_login_at: user.last_login_at || undefined,
                             location: user.location || undefined
                         }))}
@@ -351,6 +423,11 @@ const UserTable = () => {
                         onDelete={handleDeleteUser}
                         getColorForRole={getColorForRole}
                         getStatusColor={getStatusColor}
+                        currentPage={currentPage}
+                        totalPages={totalPages}
+                        onPageChange={setCurrentPage}
+                        itemsPerPage={itemsPerPage}
+                        totalItems={totalItems}
                     />
                 ) : (
                     <Table

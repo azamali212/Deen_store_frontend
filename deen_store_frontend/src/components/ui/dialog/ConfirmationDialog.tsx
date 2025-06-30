@@ -1,33 +1,121 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Loader2 } from 'lucide-react';
 import Button from '@/components/ui/buttons/button';
 
 interface ConfirmationDialogProps {
-  isOpen: boolean;
-  onClose: () => void;
-  onConfirm: () => void;
+  isOpen?: boolean;
+  onClose?: () => void;
+  onConfirm?: () => void;
   title?: string;
   description?: string;
   confirmText?: string;
   cancelText?: string;
   loading?: boolean;
   destructive?: boolean;
+  trigger?: React.ReactElement<{
+    onClick?: React.MouseEventHandler<HTMLElement>;
+    disabled?: boolean;
+  }>;
+  children?: React.ReactNode;
 }
 
 const ConfirmationDialog: React.FC<ConfirmationDialogProps> = ({
-  isOpen,
-  onClose,
+  isOpen: propsIsOpen,
+  onClose: propsOnClose,
   onConfirm,
   title = 'Are you sure?',
   description = 'This action cannot be undone.',
   confirmText = 'Confirm',
   cancelText = 'Cancel',
   loading = false,
-  destructive = true
+  destructive = true,
+  trigger,
+  children
 }) => {
+  const [internalIsOpen, setInternalIsOpen] = useState(false);
+  
+  // Determine if controlled or uncontrolled
+  const isControlled = propsIsOpen !== undefined;
+  const isOpen = isControlled ? propsIsOpen : internalIsOpen;
+  const setIsOpen = isControlled ? (propsOnClose || (() => {})) : setInternalIsOpen;
+
+  const handleClose = () => {
+    setIsOpen(false);
+  };
+
+  const handleConfirm = () => {
+    onConfirm?.();
+    if (!isControlled) {
+      handleClose();
+    }
+  };
+
+  // If uncontrolled and has trigger, render the trigger
+  if (trigger && !isControlled) {
+    const triggerProps = {
+      onClick: (e: React.MouseEvent) => {
+        e.stopPropagation();
+        setInternalIsOpen(true);
+      }
+    };
+    
+    return (
+      <>
+        {React.cloneElement(trigger, triggerProps)}
+        <DialogContent
+          isOpen={isOpen}
+          onClose={handleClose}
+          onConfirm={handleConfirm}
+          title={title}
+          description={description}
+          confirmText={confirmText}
+          cancelText={cancelText}
+          loading={loading}
+          destructive={destructive}
+        >
+          {children}
+        </DialogContent>
+      </>
+    );
+  }
+
+  // Controlled version
+  return (
+    <DialogContent
+      isOpen={isOpen}
+      onClose={handleClose}
+      onConfirm={handleConfirm}
+      title={title}
+      description={description}
+      confirmText={confirmText}
+      cancelText={cancelText}
+      loading={loading}
+      destructive={destructive}
+    >
+      {children}
+    </DialogContent>
+  );
+};
+
+const DialogContent: React.FC<Omit<ConfirmationDialogProps, 'trigger'>> = ({
+  isOpen,
+  onClose,
+  onConfirm,
+  title,
+  description,
+  confirmText,
+  cancelText,
+  loading,
+  destructive,
+  children
+}) => {
+  const handleConfirm = () => {
+    onConfirm?.();
+  };
+
   return (
     <AnimatePresence>
       {isOpen && (
@@ -38,10 +126,10 @@ const ConfirmationDialog: React.FC<ConfirmationDialogProps> = ({
           exit={{ opacity: 0 }}
           transition={{ duration: 0.15, ease: 'easeInOut' }}
         >
-          {/* Light, subtle backdrop */}
+          {/* Backdrop */}
           <div className="fixed inset-0 bg-gray-500/20 backdrop-blur-[1px]" />
 
-          {/* Centered dialog container */}
+          {/* Dialog container */}
           <div className="flex min-h-full items-center justify-center p-4 text-center">
             <motion.div
               initial={{ scale: 0.96, y: 8, opacity: 0 }}
@@ -55,7 +143,6 @@ const ConfirmationDialog: React.FC<ConfirmationDialogProps> = ({
               }}
               className="relative w-full max-w-md transform overflow-hidden rounded-lg bg-white p-6 text-left align-middle shadow-xl transition-all border border-gray-200"
             >
-              {/* Close button */}
               <button
                 onClick={onClose}
                 className="absolute right-4 top-4 rounded-full p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600 transition-colors"
@@ -90,13 +177,14 @@ const ConfirmationDialog: React.FC<ConfirmationDialogProps> = ({
                   <p className="text-sm text-gray-500">
                     {description}
                   </p>
+                  {children}
                 </div>
               </div>
 
               {/* Buttons */}
               <div className="mt-6 flex justify-end gap-3">
                 <Button
-                  variant="success"
+                  variant="ghost"
                   onClick={onClose}
                   disabled={loading}
                   className="text-gray-700 hover:bg-gray-50"
@@ -104,7 +192,7 @@ const ConfirmationDialog: React.FC<ConfirmationDialogProps> = ({
                   {cancelText}
                 </Button>
                 <Button
-                  onClick={onConfirm}
+                  onClick={handleConfirm}
                   disabled={loading}
                   variant={destructive ? 'destructive' : 'primary'}
                   className="shadow-sm hover:shadow-md"
