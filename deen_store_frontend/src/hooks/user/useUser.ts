@@ -12,7 +12,9 @@ import {
   softDeleteUser,
   fetchDeletedUsers,
   forceDeleteUser,
-  restoreDeletedUser
+  restoreDeletedUser,
+  restoreAllDeletedUsers,
+  bulkDeleteSoftDeletedUsers
 } from '@/features/user/userSlice';
 import { DetailedUser, TableUser, User } from '@/types/ui';
 
@@ -165,6 +167,64 @@ export const useUser = () => {
     [dispatch]
   );
 
+  const bulkDeleteUsers = useCallback(
+    async (userIds: string[]) => {
+      try {
+        const result = await dispatch(bulkDeleteSoftDeletedUsers(userIds));
+        if (bulkDeleteSoftDeletedUsers.fulfilled.match(result)) {
+          return {
+            success: true,
+            message: result.payload.message,
+            deleted_count: result.payload.deleted_count,
+            failed_ids: result.payload.failed_ids
+          };
+        }
+        return {
+          success: false,
+          message: result.payload?.message || 'Failed to bulk delete users'
+        };
+      } catch (error) {
+        console.error('Error bulk deleting users:', error);
+        return {
+          success: false,
+          message: 'An unexpected error occurred'
+        };
+      }
+    },
+    [dispatch]
+  );
+
+  const restoreAllUsers = useCallback(
+    async () => {
+      try {
+        const result = await dispatch(restoreAllDeletedUsers());
+        if (restoreAllDeletedUsers.fulfilled.match(result)) {
+          return {
+            success: true,
+            message: result.payload.message,
+            restored_count: result.payload.restored_count || 0,
+            failed_ids: result.payload.failed_ids || []
+          };
+        }
+        return {
+          success: false,
+          message: result.payload?.message || 'Failed to restore all users',
+          restored_count: 0,
+          failed_ids: []
+        };
+      } catch (error) {
+        console.error('Error restoring all users:', error);
+        return {
+          success: false,
+          message: 'An unexpected error occurred',
+          restored_count: 0,
+          failed_ids: []
+        };
+      }
+    },
+    [dispatch]
+  );
+
   return {
     // State
     users,
@@ -185,6 +245,8 @@ export const useUser = () => {
     deleteUser,
     loadDeletedUsers,
     restoreUser,
-    forceDeleteUser: forceDeletePermanently
+    forceDeleteUser: forceDeletePermanently,
+    bulkDeleteUsers,
+    restoreAllUsers
   };
 };

@@ -3,9 +3,10 @@ import { ErrorResponse, User, UserState } from "@/types/ui";
 import { createAsyncThunk, createSlice, PayloadAction } from "@reduxjs/toolkit";
 import { AxiosError } from "axios";
 import Cookies from 'js-cookie';
+import { reducers, extraReducers } from "./userReducers";
 
 // Extend the initial state to include stats
-const initialState: UserState = {
+export const initialState: UserState = {
     users: [],
     loading: false,
     error: null,
@@ -225,7 +226,7 @@ export const fetchDeletedUsers = createAsyncThunk<
     async (_, { rejectWithValue }) => {
         try {
             const token = Cookies.get('token');
-            const response = await api.get('/user/recycleBinUsers', {
+            const response = await api.get(`/user/recycleBinUsers`, {
                 headers: { Authorization: `Bearer ${token}` },
             });
 
@@ -250,7 +251,6 @@ export const fetchDeletedUsers = createAsyncThunk<
         }
     }
 );
-//Restore Deleted User
 export const restoreDeletedUser = createAsyncThunk<
     {
         success: boolean;
@@ -272,7 +272,8 @@ export const restoreDeletedUser = createAsyncThunk<
                 throw new Error('Authentication token not found');
             }
 
-            const response = await api.post(`/user/restore/${userId}`, {}, {
+            // Change from POST to GET and remove empty body {}
+            const response = await api.get(`/user/restore/${userId}`, {
                 headers: { Authorization: `Bearer ${token}` },
             });
 
@@ -303,7 +304,7 @@ export const restoreDeletedUser = createAsyncThunk<
             });
         }
     }
-)
+);
 
 // Force delete user thunk (permanent deletion)
 export const forceDeleteUser = createAsyncThunk<
@@ -361,121 +362,116 @@ export const forceDeleteUser = createAsyncThunk<
     }
 );
 
+// Add these new thunks to your existing userSlice.ts file
+
+// Bulk delete soft-deleted users (permanent delete)
+export const bulkDeleteSoftDeletedUsers = createAsyncThunk<
+    {
+        success: boolean;
+        message: string;
+        deleted_count: number;
+        failed_ids: string[];
+    },
+    string[], // Array of user IDs
+    { rejectValue: ErrorResponse }
+>(
+    'users/bulkDeleteSoftDeletedUsers',
+    async (userIds, { rejectWithValue, dispatch }) => {
+        try {
+            const token = Cookies.get('token');
+            const response = await api.post('/users/recycle-bin/bulk-delete', {
+                user_ids: userIds
+            }, {
+                headers: { Authorization: `Bearer ${token}` },
+            });
+
+            const responseData = response.data.data?.original || response.data;
+
+            if (!responseData.success) {
+                throw new Error(responseData.message || 'Failed to bulk delete users');
+            }
+
+            // Refresh deleted users list
+            dispatch(fetchDeletedUsers());
+
+            return responseData;
+        } catch (err) {
+            const error = err as AxiosError<ErrorResponse>;
+            if (error.response) {
+                return rejectWithValue({
+                    message: error.response.data?.message || 'Failed to bulk delete users',
+                    details: error.response.data?.details
+                });
+            }
+            return rejectWithValue({
+                message: (err as Error).message || 'Network error while bulk deleting users'
+            });
+        }
+    }
+);
+
+// Restore all soft-deleted users
+export const restoreAllDeletedUsers = createAsyncThunk<
+    {
+        success: boolean;
+        message: string;
+        restored_count: number;
+        failed_ids: string[];
+    },
+    void,
+    { rejectValue: ErrorResponse }
+>(
+    'users/restoreAllDeletedUsers',
+    async (_, { rejectWithValue, dispatch }) => {
+        try {
+            const token = Cookies.get('token');
+            const response = await api.post('/users/recycle-bin/restore-all', {}, {
+                headers: { Authorization: `Bearer ${token}` },
+            });
+
+            const responseData = response.data.data?.original || response.data;
+
+            if (!responseData.success) {
+                throw new Error(responseData.message || 'Failed to restore all users');
+            }
+
+            // Ensure the response has all required fields
+            const result = {
+                success: responseData.success,
+                message: responseData.message,
+                restored_count: responseData.restored_count || 0,
+                failed_ids: responseData.failed_ids || []
+            };
+
+            // Refresh both active and deleted users lists
+            dispatch(fetchUsers({ page: 1 }));
+            dispatch(fetchDeletedUsers());
+
+            return result;
+        } catch (err) {
+            const error = err as AxiosError<ErrorResponse>;
+            if (error.response) {
+                return rejectWithValue({
+                    message: error.response.data?.message || 'Failed to restore all users',
+                    details: error.response.data?.details
+                });
+            }
+            return rejectWithValue({
+                message: (err as Error).message || 'Network error while restoring all users'
+            });
+        }
+    }
+);
 
 const userSlice = createSlice({
     name: 'users',
     initialState,
-    reducers: {
-        clearMessages(state) {
-            state.error = null;
-            state.successMessage = null;
-        },
-        setSelectedUser: (state, action: PayloadAction<User | null>) => {
-            state.selectedUser = action.payload;
-        },
-        resetUserState() {
-            return initialState;
-        }
-    },
+    reducers: reducers,
     extraReducers: (builder) => {
-        builder
-            .addCase(fetchUsers.pending, (state) => {
-                state.loading = true;
-            })
-            .addCase(fetchUsers.fulfilled, (state, action) => {
-                state.loading = false;
-                // Only update what changed
-                state.users = action.payload.users;
-                state.pagination = action.payload.pagination;
-                state.stats = action.payload.stats;
-            })
-            .addCase(fetchUsers.rejected, (state, action) => {
-                state.loading = false;
-                state.error = action.payload?.message || 'Failed to fetch users';
-            })
-            .addCase(fetchSingleUser.pending, (state) => {
-                state.loading = true;
-                state.selectedUser = null;
-            })
-            .addCase(fetchSingleUser.fulfilled, (state, action) => {
-                state.loading = false;
-                state.selectedUser = action.payload;
-            })
-            .addCase(fetchSingleUser.rejected, (state, action) => {
-                state.loading = false;
-                state.error = action.payload?.message || 'Failed to fetch user';
-            })
-            .addCase(softDeleteUser.pending, (state) => {
-                state.loading = true;
-                state.successMessage = null;
-                state.error = null;
-            })
-            .addCase(softDeleteUser.fulfilled, (state, action) => {
-                state.loading = false;
-                state.successMessage = action.payload.message;
-                // Remove the deleted user from the local state
-                state.users = state.users.filter(user => user.id !== action.payload.data.user_id);
-                // Update stats if needed
-                if (state.stats.totalUsers > 0) {
-                    state.stats.totalUsers -= 1;
-                }
-            })
-            .addCase(softDeleteUser.rejected, (state, action) => {
-                state.loading = false;
-                state.error = action.payload?.message || 'Failed to delete user';
-            })
-            .addCase(fetchDeletedUsers.pending, (state) => {
-                state.deletedUsers.loading = true;
-                state.deletedUsers.error = null;
-            })
-            .addCase(fetchDeletedUsers.fulfilled, (state, action) => {
-                state.deletedUsers.loading = false;
-                state.deletedUsers.data = action.payload.data;
-            })
-            .addCase(fetchDeletedUsers.rejected, (state, action) => {
-                state.deletedUsers.loading = false;
-                state.deletedUsers.error = action.payload?.message || 'Failed to fetch deleted users';
-            })
-            .addCase(restoreDeletedUser.pending, (state) => {
-                state.deletedUsers.loading = true;
-                state.successMessage = null;
-                state.error = null;
-            })
-            .addCase(restoreDeletedUser.fulfilled, (state, action) => {
-                state.deletedUsers.loading = false;
-                state.successMessage = action.payload.message;
-                // Remove the restored user from the deleted users list
-                state.deletedUsers.data = state.deletedUsers.data.filter(
-                    user => user.user_id !== action.payload.data.user_id
-                );
-            })
-            .addCase(restoreDeletedUser.rejected, (state, action) => {
-                state.deletedUsers.loading = false;
-                state.error = action.payload?.message || 'Failed to restore user';
-            })
-            .addCase(forceDeleteUser.pending, (state) => {
-                state.deletedUsers.loading = true;
-                state.successMessage = null;
-                state.error = null;
-            })
-            .addCase(forceDeleteUser.fulfilled, (state, action) => {
-                state.deletedUsers.loading = false;
-                state.successMessage = action.payload.message;
-                // Remove the force-deleted user from the deleted users list
-                state.deletedUsers.data = state.deletedUsers.data.filter(
-                    user => user.user_id !== action.payload.data.user_id
-                );
-                // Update stats if needed
-                if (state.stats.totalUsers > 0) {
-                    state.stats.totalUsers -= 1;
-                }
-            })
-            .addCase(forceDeleteUser.rejected, (state, action) => {
-                state.deletedUsers.loading = false;
-                state.error = action.payload?.message || 'Failed to permanently delete user';
-            });
-    },
+        extraReducers(builder);
+    }
 });
+
 
 export const { clearMessages, setSelectedUser, resetUserState } = userSlice.actions;
 export default userSlice.reducer;

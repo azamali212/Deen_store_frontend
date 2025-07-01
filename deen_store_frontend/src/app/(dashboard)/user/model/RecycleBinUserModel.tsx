@@ -6,6 +6,7 @@ import Model from '@/components/ui/modals/model';
 import Button from '@/components/ui/buttons/button';
 import Spinner from '@/components/ui/spinner/Spinner';
 import { DeletedUser } from '@/types/ui';
+import { toast } from 'react-toastify';
 
 interface RecycleBinUserModelProps {
     deletedUsers: DeletedUser[];
@@ -13,8 +14,22 @@ interface RecycleBinUserModelProps {
     setIsModalOpen: (v: boolean) => void;
     onRestore: (userId: string) => Promise<void>;
     onForceDelete: (userId: string) => Promise<void>;
+    onBulkDelete: (userIds: string[]) => Promise<{
+        success: boolean;
+        message: string;
+        deleted_count: number;
+        failed_ids: string[];
+    }>;
+    onRestoreAll: () => Promise<{
+        success: boolean;
+        message: string;
+        restored_count: number;
+        failed_ids: string[];
+    }>;
     isRestoring: boolean;
     isDeleting: boolean;
+    isBulkDeleting: boolean;
+    isRestoringAll: boolean;
 }
 
 const RecycleBinUserModel: React.FC<RecycleBinUserModelProps> = ({ 
@@ -23,8 +38,12 @@ const RecycleBinUserModel: React.FC<RecycleBinUserModelProps> = ({
     setIsModalOpen,
     onRestore,
     onForceDelete,
+    onBulkDelete,
+    onRestoreAll,
     isRestoring,
-    isDeleting
+    isDeleting,
+    isBulkDeleting,
+    isRestoringAll
 }) => {
     const [selectedUser, setSelectedUser] = useState<DeletedUser | null>(null);
 
@@ -43,6 +62,46 @@ const RecycleBinUserModel: React.FC<RecycleBinUserModelProps> = ({
         setSelectedUser(user);
     };
 
+    const handleBulkDelete = async () => {
+        if (deletedUsers.length === 0) return;
+        
+        try {
+            const userIds = deletedUsers.map(user => user.user_id);
+            const result = await onBulkDelete(userIds);
+            
+            if (result.success) {
+                toast.success(`Deleted ${result.deleted_count} users`);
+                if (result.failed_ids.length > 0) {
+                    toast.warning(`Failed to delete ${result.failed_ids.length} users`);
+                }
+            } else {
+                toast.error(result.message);
+            }
+        } catch (error) {
+            toast.error('Failed to delete users');
+        }
+    };
+
+    const handleRestoreAll = async () => {
+        if (deletedUsers.length === 0) return;
+        
+        try {
+            const result = await onRestoreAll();
+            
+            if (result.success) {
+                toast.success(result.message);
+                // Add null check for failed_ids
+                if (result.failed_ids && result.failed_ids.length > 0) {
+                    toast.warning(`Failed to restore ${result.failed_ids.length} users`);
+                }
+            } else {
+                toast.error(result.message);
+            }
+        } catch (error) {
+            toast.error('Failed to restore users');
+        }
+    };
+
     return (
         <Model
             isOpen={isModalOpen}
@@ -56,10 +115,17 @@ const RecycleBinUserModel: React.FC<RecycleBinUserModelProps> = ({
                     <Button
                         variant="ghost"
                         className="flex items-center gap-1.5 text-gray-700 hover:bg-gray-50"
-                        disabled={deletedUsers.length === 0}
+                        disabled={deletedUsers.length === 0 || isRestoringAll}
+                        onClick={handleRestoreAll}
                     >
-                        <RotateCw className="w-4 h-4" />
-                        Restore All
+                        {isRestoringAll ? (
+                            <Spinner size="sm" />
+                        ) : (
+                            <>
+                                <RotateCw className="w-4 h-4" />
+                                Restore All
+                            </>
+                        )}
                     </Button>
                     <div className="flex gap-2">
                         <Button
@@ -72,9 +138,14 @@ const RecycleBinUserModel: React.FC<RecycleBinUserModelProps> = ({
                         <Button
                             variant="danger"
                             className="bg-red-600 hover:bg-red-700 text-white"
-                            disabled={deletedUsers.length === 0}
+                            disabled={deletedUsers.length === 0 || isBulkDeleting}
+                            onClick={handleBulkDelete}
                         >
-                            Empty Recycle Bin
+                            {isBulkDeleting ? (
+                                <Spinner size="sm" />
+                            ) : (
+                                'Empty Recycle Bin'
+                            )}
                         </Button>
                     </div>
                 </div>

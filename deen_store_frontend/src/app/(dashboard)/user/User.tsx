@@ -9,21 +9,24 @@ import UserTable from './userTable/UserTable';
 import { useUser } from '@/hooks/user/useUser';
 import RecycleBinUserModel from './model/RecycleBinUserModel';
 import { toast } from 'react-toastify';
-import Spinner from '@/components/ui/spinner/Spinner';
 
 const User = () => {
-    const { 
-        loadUsers, 
+    const {
+        loadUsers,
         error,
         loadDeletedUsers,
         deletedUsers,
         restoreUser,
         forceDeleteUser,
-        stats 
+        stats,
+        restoreAllUsers,
+        bulkDeleteUsers
     } = useUser();
     const [showRecycleBin, setShowRecycleBin] = useState(false);
     const [isRestoring, setIsRestoring] = useState(false);
     const [isDeleting, setIsDeleting] = useState(false);
+    const [isBulkDeleting, setIsBulkDeleting] = useState(false);
+    const [isRestoringAll, setIsRestoringAll] = useState(false);
 
     // Load users and deleted users when component mounts
     useEffect(() => {
@@ -71,6 +74,75 @@ const User = () => {
         }
     };
 
+    const handleBulkDelete = async (userIds: string[]) => {
+        setIsBulkDeleting(true);
+        try {
+            const result = await bulkDeleteUsers(userIds);
+            if (result.success) {
+                toast.success(`Deleted ${result.deleted_count} users`);
+                // Add null check for failed_ids
+                if (result.failed_ids && result.failed_ids.length > 0) {
+                    toast.warning(`Failed to delete ${result.failed_ids.length} users`);
+                }
+                await loadDeletedUsers();
+                // Return the expected type
+                return {
+                    success: true,
+                    message: `Deleted ${result.deleted_count} users`,
+                    deleted_count: result.deleted_count || 0,
+                    failed_ids: result.failed_ids || []
+                };
+            } else {
+                toast.error(result.message);
+                return {
+                    success: false,
+                    message: result.message,
+                    deleted_count: 0,
+                    failed_ids: []
+                };
+            }
+        } catch (error) {
+            toast.error('Failed to bulk delete users');
+            return {
+                success: false,
+                message: 'Failed to bulk delete users',
+                deleted_count: 0,
+                failed_ids: userIds // Return all userIds as failed if error occurs
+            };
+        } finally {
+            setIsBulkDeleting(false);
+        }
+    };
+
+    const handleRestoreAll = async () => {
+        setIsRestoringAll(true);
+        try {
+            const result = await restoreAllUsers();
+            
+            if (result.success) {
+                toast.success(result.message);
+                if (result.failed_ids && result.failed_ids.length > 0) {
+                    toast.warning(`Failed to restore ${result.failed_ids.length} users`);
+                }
+                await Promise.all([loadUsers(), loadDeletedUsers()]);
+            } else {
+                toast.error(result.message);
+            }
+            
+            return result;
+        } catch (error) {
+            toast.error('Failed to restore all users');
+            return {
+                success: false,
+                message: 'Failed to restore all users',
+                restored_count: 0,
+                failed_ids: deletedUsers.map(user => user.user_id)
+            };
+        } finally {
+            setIsRestoringAll(false);
+        }
+    };
+
     return (
         <div className="p-4 sm:p-6 md:p-8 bg-[rgb(var(--dashboard--background))] min-h-screen relative">
             <motion.div
@@ -98,12 +170,13 @@ const User = () => {
                         >
                             <Plus className="w-5 h-5 transition-transform group-hover:rotate-90" />
                         </Button>
-                        
+
                         <MotionConfig transition={{ type: 'spring', damping: 10, stiffness: 300 }}>
                             <div className="relative">
                                 <Button
                                     onClick={handleOpenRecycleBin}
                                     className="flex items-center gap-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white rounded-xl shadow-lg hover:shadow-xl w-full sm:w-auto px-5 py-3 group relative"
+                                    data-recycle-bin="true" // Add this attribute
                                 >
                                     <motion.div
                                         whileHover={{
@@ -120,7 +193,7 @@ const User = () => {
                                         <Trash2 className="w-5 h-5" />
                                     </motion.div>
                                 </Button>
-                                
+
                                 {/* Notification badge */}
                                 {deletedUsers.length > 0 && (
                                     <motion.div
@@ -138,20 +211,24 @@ const User = () => {
                     </div>
                 </div>
             </motion.div>
-           
+
             {stats && <UserCard stats={stats} />}
-        
+
             <UserTable onOpenRecycleBin={handleOpenRecycleBin} />
-            
+
             {/* Recycle Bin Modal */}
-            <RecycleBinUserModel 
-                deletedUsers={deletedUsers} 
+            <RecycleBinUserModel
+                deletedUsers={deletedUsers}
                 isModalOpen={showRecycleBin}
                 setIsModalOpen={setShowRecycleBin}
                 onRestore={handleRestoreUser}
                 onForceDelete={handleForceDeleteUser}
+                onBulkDelete={handleBulkDelete}
+                onRestoreAll={handleRestoreAll}
                 isRestoring={isRestoring}
                 isDeleting={isDeleting}
+                isBulkDeleting={isBulkDeleting}
+                isRestoringAll={isRestoringAll}
             />
         </div>
     )

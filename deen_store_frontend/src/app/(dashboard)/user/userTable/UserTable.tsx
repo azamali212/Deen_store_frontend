@@ -1,7 +1,7 @@
 // components/user/UserTable.tsx
 import Table from '@/components/ui/table/Table';
 import { useUser } from '@/hooks/user/useUser';
-import { Check, RefreshCw, X, Plus, Trash2, Edit, Table2, Grid } from 'lucide-react';
+import { Check, RefreshCw, X, Plus, Trash2, Edit, Table2, Grid, Eye } from 'lucide-react';
 import React, { useEffect, useState } from 'react';
 import { formatDate } from '@/lib/utils';
 import Button from '@/components/ui/buttons/button';
@@ -18,7 +18,7 @@ interface UserTableProps {
 }
 
 const UserTable: React.FC<UserTableProps> = ({ onOpenRecycleBin }) => {
-    const { users, loading, error, loadUsers, pagination, deleteUser } = useUser();
+    const { users, loading, error, loadUsers, pagination, deleteUser,loadDeletedUsers } = useUser();
     const [currentPage, setCurrentPage] = useState(1);
     const [searchQuery, setSearchQuery] = useState('');
     const [selectedUsers, setSelectedUsers] = useState<string[]>([]);
@@ -44,13 +44,10 @@ const handleDeleteUser = async (userId: string) => {
         const recycleBinBtn = document.querySelector('[data-recycle-bin]');
         
         if (row && recycleBinBtn) {
-            // Get positions for animation
-            const rowRect = row.getBoundingClientRect();
-            const binRect = recycleBinBtn.getBoundingClientRect();
-            
             // Create a flying trash element
             const flyingTrash = document.createElement('div');
             flyingTrash.className = 'fixed z-50 pointer-events-none';
+            flyingTrash.style.zIndex = '9999';
             flyingTrash.innerHTML = `
                 <div class="w-8 h-8 bg-purple-500 rounded-full flex items-center justify-center">
                     <Trash2 className="w-4 h-4 text-white" />
@@ -58,31 +55,42 @@ const handleDeleteUser = async (userId: string) => {
             `;
             document.body.appendChild(flyingTrash);
             
+            // Get positions
+            const rowRect = row.getBoundingClientRect();
+            const binRect = recycleBinBtn.getBoundingClientRect();
+            
+            // Calculate animation values
+            const translateX = binRect.left + (binRect.width / 2) - (rowRect.left + (rowRect.width / 2));
+            const translateY = binRect.top + (binRect.height / 2) - rowRect.top;
+            
             // Set initial position
+            flyingTrash.style.position = 'fixed';
             flyingTrash.style.left = `${rowRect.left + rowRect.width/2 - 16}px`;
             flyingTrash.style.top = `${rowRect.top}px`;
             
             // Animate to recycle bin
             flyingTrash.style.transition = 'all 0.8s cubic-bezier(0.65, 0, 0.35, 1)';
-            flyingTrash.style.transform = `translate(
-                ${binRect.left + binRect.width/2 - (rowRect.left + rowRect.width/2)}px,
-                ${binRect.top + binRect.height/2 - rowRect.top}px
-            ) scale(0.5)`;
+            flyingTrash.style.transform = `translate(${translateX}px, ${translateY}px) scale(0.5)`;
             flyingTrash.style.opacity = '0';
             
-            // Remove after animation and refresh
+            // Remove after animation
             setTimeout(() => {
                 flyingTrash.remove();
                 loadUsers();
+                loadDeletedUsers();
             }, 800);
             
-            // Also animate the row
+            // Animate the row removal
             row.style.transition = 'all 0.3s ease';
             row.style.opacity = '0';
             row.style.transform = 'translateX(30px)';
+            setTimeout(() => {
+                row.style.display = 'none';
+            }, 300);
         } else {
-            // Fallback if positions can't be calculated
+            // Fallback
             loadUsers();
+            loadDeletedUsers();
         }
     } else {
         toast.error(result.message);
@@ -172,8 +180,6 @@ const handleDeleteUser = async (userId: string) => {
         console.log("Edit user", id);
     };
 
-
-
     // Custom renderers using the exact property names from the data
     const customRenderers = {
         status: (value: string) => {
@@ -259,6 +265,7 @@ const handleDeleteUser = async (userId: string) => {
     ];
 
     const tableData = users.map(user => ({
+        id: `user-row-${user.id}`,
         select: (
             <input
                 type="checkbox"
@@ -292,9 +299,9 @@ const handleDeleteUser = async (userId: string) => {
                         variant="ghost"
                         size="sm"
                         className="text-gray-500 hover:text-purple-500"
-                        onClick={() => console.log("Edit user", user.id)}
+                        onClick={() => console.log("Show user", user.id)}
                     >
-                        <Edit className="w-4 h-4" />
+                        <Eye className="w-4 h-4" />
                     </Button>
                 </Tooltip>
                 <Tooltip content="Delete user">
