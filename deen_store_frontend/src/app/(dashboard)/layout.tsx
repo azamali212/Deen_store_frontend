@@ -35,6 +35,8 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
     SidebarColors.initializeColor();
   }
 
+
+  
   useEffect(() => {
     SidebarColors.initializeColor();
   }, []);

@@ -65,7 +65,7 @@ const NestedSidebar: React.FC<NestedSidebarProps> = ({
 
     const dropdownItems = [
       { label: 'All Users', href: '/dashboard/users' },
-      { label: 'Roles', href: '/dashboard/roles' },
+      { label: 'User Activity', href: '/dashboard/roles' },
     ];
 
     switch (activeItem) {

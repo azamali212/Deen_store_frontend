@@ -298,8 +298,6 @@ export interface PaginationProps {
 
 
 //For Redux
-
-
 export interface LoginPayload {
   email: string;
   password: string;
@@ -308,6 +306,9 @@ export interface LoginPayload {
 export interface LoginResponse {
   user: User;
   token: string;
+  role: string[]// Added role to the response
+  permissions: string[]; // Added permissions to the response
+  message?: string;
 }
 
 export interface ErrorResponse {
@@ -555,7 +556,7 @@ export interface User {
   name: string;
   email: string;
   location?: string;
-  roles: Role[];
+  roles?: Array<{ name: string }>;
 
   confirm_password?: string | null;
   stripe_id?: string | null;
