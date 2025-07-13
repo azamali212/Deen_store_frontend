@@ -10,41 +10,42 @@ import Model from '@/components/ui/modals/model';
 import { logout } from '@/features/auth/authSlice';
 import { useAppDispatch } from '@/store';
 import { useRouter } from 'next/navigation';
+import Cookies from 'js-cookie';
 
 // Define searchable pages and their routes
 const SEARCHABLE_PAGES = [
-  { 
-    name: 'Dashboard', 
+  {
+    name: 'Dashboard',
     path: '/dashboard',
     icon: '📊'
   },
-  { 
-    name: 'Products', 
+  {
+    name: 'Products',
     path: '/dashboard/products',
     icon: '🛍️'
   },
-  { 
-    name: 'Orders', 
+  {
+    name: 'Orders',
     path: '/dashboard/orders',
     icon: '📦'
   },
-  { 
-    name: 'Settings', 
+  {
+    name: 'Settings',
     path: '/dashboard/settings',
     icon: '⚙️'
   },
-  { 
-    name: 'User', 
+  {
+    name: 'User',
     path: '/user',
     icon: '👤'
   },
-  { 
-    name: 'Permissions', 
+  {
+    name: 'Permissions',
     path: '/permissions',
     icon: '🔐'
   },
-  { 
-    name: 'Role', 
+  {
+    name: 'Role',
     path: '/role',
     icon: '🔖'
   },
@@ -70,7 +71,7 @@ const Navbar = ({
   // Handle search functionality
   const handleSearch = (query: string) => {
     setSearchQuery(query);
-    
+
     if (!query.trim()) {
       setSearchResults([]);
       return;
@@ -128,6 +129,16 @@ const Navbar = ({
 
   const handleLogout = async () => {
     await dispatch(logout());
+    // Clear any remaining localStorage items
+    localStorage.removeItem('multiGuardAuth');
+    localStorage.removeItem('token');
+    // Set a logout event for other tabs
+    localStorage.setItem('logout-event', Date.now().toString());
+    localStorage.removeItem('logout-event');
+    Cookies.remove('token');
+    Cookies.remove('PHPSESSID');
+    localStorage.removeItem('multiGuardAuth');
+    // Redirect
     window.location.href = '/shopinity_admin_login';
   };
 
@@ -158,8 +169,8 @@ const Navbar = ({
         height: '64px',
         backgroundColor: isScrolled ? 'rgb(var(--nav))' : 'transparent',
         boxShadow: isScrolled ? '0 2px 8px rgba(0, 0, 0, 0.2)' : 'none',
-        borderBottom: isScrolled 
-          ? '1px solid rgba(255, 255, 255, 0.15)' 
+        borderBottom: isScrolled
+          ? '1px solid rgba(255, 255, 255, 0.15)'
           : '1px solid transparent',
       }}
     >
@@ -267,13 +278,13 @@ const Navbar = ({
         size="md"
       >
         <div className="p-4">
-          <SearchBar 
+          <SearchBar
             value={searchQuery}
             onChange={(e) => handleSearch(e.target.value)}
             placeholder="Search pages..."
             autoFocus
           />
-          
+
           {searchResults.length > 0 ? (
             <div className="mt-4 space-y-2">
               {searchResults.map((result, index) => (

@@ -301,6 +301,7 @@ export interface PaginationProps {
 export interface LoginPayload {
   email: string;
   password: string;
+  guard?: string; // 
 }
 
 export interface LoginResponse {
@@ -309,6 +310,22 @@ export interface LoginResponse {
   role: string[]// Added role to the response
   permissions: string[]; // Added permissions to the response
   message?: string;
+  guard: string; // Added guard to the response
+}
+
+export interface GuardState {
+  user: User | null;
+  token: string | null;
+  permissions: string[];
+  isAuthenticated: boolean;
+}
+
+export interface MultiGuardAuthState {
+  guards: Record<string, GuardState>;
+  currentGuard: string | null;
+  loading: boolean;
+  error: string | null;
+  initialized: boolean
 }
 
 export interface ErrorResponse {
@@ -588,7 +605,8 @@ export interface User {
     name: string;
   }>;
   avatar?: string;
-  account_type?: string;
+  // Make sure all fields that could be undefined in WritableDraft are properly typed
+  [key: string]: any; // Add index signature if needed
 }
 
 export interface UserState {
