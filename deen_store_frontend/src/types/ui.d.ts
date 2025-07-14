@@ -311,6 +311,7 @@ export interface LoginResponse {
   permissions: string[]; // Added permissions to the response
   message?: string;
   guard: string; // Added guard to the response
+  tab_session_id: string;
 }
 
 export interface GuardState {
@@ -345,6 +346,8 @@ export interface AuthState {
   error: string | null;
   successMessage: string | null;
   isAuthenticated: boolean;
+  tabId: string;
+  guard: string | null;
 }
 
 //ForgetPassword

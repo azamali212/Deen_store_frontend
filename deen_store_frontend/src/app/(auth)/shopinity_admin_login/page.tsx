@@ -13,7 +13,6 @@ import { useForgetPassword } from '@/hooks/auth/useForgotPassword';
 
 const AdminLogin = () => {
     const router = useRouter();
-
     const {
         login,
         user,
@@ -34,16 +33,11 @@ const AdminLogin = () => {
     } = useForgetPassword();
 
     const [isMounted, setIsMounted] = useState(false);
-
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [showPassword, setShowPassword] = useState(false);
-
-    const [modalStep, setModalStep] = useState<
-        'method' | 'email' | 'phone' | 'verification' | 'resetPassword' | null
-    >(null);
+    const [modalStep, setModalStep] = useState<'method' | 'email' | 'phone' | 'verification' | 'resetPassword' | null>(null);
     const [resetMethod, setResetMethod] = useState<'email' | 'phone' | null>(null);
-
     const [forgotEmail, setForgotEmail] = useState('');
     const [forgotPhone, setForgotPhone] = useState('');
     const [verificationCode, setVerificationCode] = useState('');
@@ -52,26 +46,30 @@ const AdminLogin = () => {
 
     useEffect(() => {
         setIsMounted(true);
+        return () => resetAuthState();
     }, []);
 
     useEffect(() => {
         const lockData = localStorage.getItem('loginLock');
         const now = new Date().getTime();
-      
+
         if (lockData && now < Number(lockData)) {
-          const waitMinutes = Math.ceil((Number(lockData) - now) / 60000);
-          alert(`You are temporarily locked out due to too many failed login attempts. Try again in ${waitMinutes} minute(s).`);
+            const waitMinutes = Math.ceil((Number(lockData) - now) / 60000);
+            alert(`You are temporarily locked out due to too many failed login attempts. Try again in ${waitMinutes} minute(s).`);
         }
-      }, []);
+    }, []);
 
     useEffect(() => {
         if (isAuthenticated) {
-            const token = Cookies.get('token');
-            if (token) {
-                router.replace('/dashboard');
-            }
+          // Only redirect if authenticated in THIS tab
+          const currentTabId = sessionStorage.getItem('tabId');
+          const currentToken = localStorage.getItem(`auth_token_${currentTabId}`);
+          
+          if (currentToken) {
+            router.replace('/dashboard');
+          }
         }
-    }, [isAuthenticated, router]);
+      }, [isAuthenticated, router]);
 
     useEffect(() => {
         if (forgotPasswordSuccess) {

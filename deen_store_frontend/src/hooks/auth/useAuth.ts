@@ -1,8 +1,8 @@
 import { useSelector, useDispatch } from 'react-redux';
 import { RootState, AppDispatch } from '@/store';
-
 import { LoginPayload } from '@/types/ui';
-import { loadUser, login, logout, refreshToken, resetAuthState } from '@/features/auth/authSlice';
+import { loadUser, login, logout, resetAuthState, initializeAuth } from '@/features/auth/authSlice';
+import { useEffect } from 'react';
 
 export const useAuth = () => {
   const dispatch = useDispatch<AppDispatch>();
@@ -14,7 +14,18 @@ export const useAuth = () => {
     error,
     isAuthenticated,
     successMessage,
+    guard,
+    tabId,
   } = useSelector((state: RootState) => state.auth);
+
+  // Initialize auth state on mount
+  useEffect(() => {
+    dispatch(initializeAuth());
+    // Optionally load user if token exists
+    if (token) {
+      dispatch(loadUser());
+    }
+  }, [dispatch, token]);
 
   const handleLogin = (payload: LoginPayload) => {
     return dispatch(login(payload));
@@ -28,10 +39,6 @@ export const useAuth = () => {
     return dispatch(loadUser());
   };
 
-  const handleRefreshToken = () => {
-    return dispatch(refreshToken());
-  };
-
   const clearAuthState = () => {
     dispatch(resetAuthState());
   };
@@ -43,10 +50,11 @@ export const useAuth = () => {
     error,
     isAuthenticated,
     successMessage,
+    guard,
+    tabId,
     login: handleLogin,
     logout: handleLogout,
     loadUser: handleLoadUser,
-    refreshToken: handleRefreshToken,
     resetAuthState: clearAuthState,
   };
 };
