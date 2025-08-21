@@ -1,4 +1,4 @@
-"use client";
+'use client';
 import React, { useState, useRef, useEffect } from 'react';
 import { ChevronDown, ChevronRight } from 'lucide-react';
 import Link from 'next/link';
@@ -11,11 +11,13 @@ const DropDown: React.FC<DropDownProps> = ({
   collapsed,
   items,
   variant = 'sidebar',
+  align = 'start',
+  trigger,
+  children
 }) => {
   const [open, setOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  // Close navbar dropdown when clicked outside
   useEffect(() => {
     if (variant !== 'navbar') return;
 
@@ -38,40 +40,46 @@ const DropDown: React.FC<DropDownProps> = ({
   if (variant === 'navbar') {
     return (
       <div ref={dropdownRef} className="relative inline-block text-left">
-        <button
-          onClick={toggleDropdown}
-          className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white hover:text-gray-200 transition-all duration-200 hover:bg-white/10 rounded-lg"
-        >
-          {icon}
-          {label && <span className="font-medium">{label}</span>}
-        </button>
+        {trigger ? (
+          <div onClick={toggleDropdown}>{trigger}</div>
+        ) : (
+          <button
+            onClick={toggleDropdown}
+            className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white hover:text-gray-200 transition-all duration-200 hover:bg-white/10 rounded-lg"
+          >
+            {icon}
+            {label && <span className="font-medium">{label}</span>}
+          </button>
+        )}
 
         <div
-          className={`absolute right-0 mt-2 w-48 bg-white dark:bg-gray-800 rounded-lg shadow-xl border border-gray-100 dark:border-gray-700 z-50 transition-all duration-200 origin-top-right ${
+          className={`absolute ${align === 'end' ? 'right-0' : 'left-0'} mt-2 w-48 bg-white dark:bg-gray-800 rounded-lg shadow-xl border border-gray-100 dark:border-gray-700 z-50 transition-all duration-200 origin-top-right ${
             open ? 'opacity-100 scale-100' : 'opacity-0 scale-95 pointer-events-none'
           }`}
         >
-          <div className="py-1">
-            {items.map((item, idx) =>
-              item.onClick ? (
-                <button
-                  key={idx}
-                  onClick={item.onClick}
-                  className="w-full text-left px-4 py-2.5 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors duration-150 flex items-center"
-                >
-                  {item.label}
-                </button>
-              ) : (
-                <Link
-                  key={idx}
-                  href={item.href || '#'}
-                  className="w-full text-left px-4 py-2.5 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors duration-150 flex items-center"
-                >
-                  {item.label}
-                </Link>
-              )
-            )}
-          </div>
+          {children || (
+            <div className="py-1">
+              {items?.map((item, idx) =>
+                item.onClick ? (
+                  <button
+                    key={idx}
+                    onClick={item.onClick}
+                    className="w-full text-left px-4 py-2.5 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors duration-150 flex items-center"
+                  >
+                    {item.label}
+                  </button>
+                ) : (
+                  <Link
+                    key={idx}
+                    href={item.href || '#'}
+                    className="w-full text-left px-4 py-2.5 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors duration-150 flex items-center"
+                  >
+                    {item.label}
+                  </Link>
+                )
+              )}
+            </div>
+          )}
         </div>
       </div>
     );
@@ -118,27 +126,29 @@ const DropDown: React.FC<DropDownProps> = ({
           transition={{ duration: 0.2, ease: "easeInOut" }}
           className="ml-8 overflow-hidden"
         >
-          <div className="py-1 space-y-1">
-            {items.map((item, idx) =>
-              item.onClick ? (
-                <button
-                  key={idx}
-                  onClick={item.onClick}
-                  className="block w-full text-left px-4 py-2 text-sm text-gray-600 dark:text-gray-300 hover:bg-gray-100/50 dark:hover:bg-gray-700/50 rounded-md transition-colors duration-150"
-                >
-                  {item.label}
-                </button>
-              ) : (
-                <Link
-                  key={idx}
-                  href={item.href || '#'}
-                  className="block px-4 py-2 text-sm text-gray-600 dark:text-gray-300 hover:bg-gray-100/50 dark:hover:bg-gray-700/50 rounded-md transition-colors duration-150"
-                >
-                  {item.label}
-                </Link>
-              )
-            )}
-          </div>
+          {children || (
+            <div className="py-1 space-y-1">
+              {items?.map((item, idx) =>
+                item.onClick ? (
+                  <button
+                    key={idx}
+                    onClick={item.onClick}
+                    className="block w-full text-left px-4 py-2 text-sm text-gray-600 dark:text-gray-300 hover:bg-gray-100/50 dark:hover:bg-gray-700/50 rounded-md transition-colors duration-150"
+                  >
+                    {item.label}
+                  </button>
+                ) : (
+                  <Link
+                    key={idx}
+                    href={item.href || '#'}
+                    className="block px-4 py-2 text-sm text-gray-600 dark:text-gray-300 hover:bg-gray-100/50 dark:hover:bg-gray-700/50 rounded-md transition-colors duration-150"
+                  >
+                    {item.label}
+                  </Link>
+                )
+              )}
+            </div>
+          )}
         </motion.div>
       )}
     </div>

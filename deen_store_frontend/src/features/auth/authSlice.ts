@@ -143,14 +143,19 @@ const authSlice = createSlice({
     },
     initializeAuth(state) {
       if (typeof window !== 'undefined') {
-        const currentTabId = sessionStorage.getItem('tabId') || getTabId(); // Use getTabId() instead
+        const currentTabId = sessionStorage.getItem('tabId') || getTabId();
         const token = localStorage.getItem(`auth_token_${currentTabId}`);
-        const guard = localStorage.getItem(`auth_guard_${currentTabId}`);
 
+        // Only set as authenticated if THIS tab has a token
         state.token = token;
-        state.guard = guard;
         state.isAuthenticated = !!token;
         state.tabId = currentTabId;
+
+        // If no token for this tab, clear any potential state
+        if (!token) {
+          state.user = null;
+          state.guard = null;
+        }
       }
     },
   },

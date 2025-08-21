@@ -7,9 +7,11 @@ import {
   restoreDeletedUser,
   forceDeleteUser,
   bulkDeleteSoftDeletedUsers,
-  restoreAllDeletedUsers
+  restoreAllDeletedUsers,
+  deactivateUser,
+  activateUser
 } from "./userSlice";
-import { User, UserState } from "@/types/ui";
+import { User, UserState, Permission } from "@/types/ui";
 import { initialState } from "./userSlice";
 
 // Helper type to handle the WritableDraft conversion
@@ -22,12 +24,16 @@ type UserReducers = {
   clearMessages: CaseReducer<UserState>;
   setSelectedUser: CaseReducer<UserState, PayloadAction<User | null>>;
   resetUserState: CaseReducer<UserState>;
+  setSelectedUserPermissions: CaseReducer<UserState, PayloadAction<Permission[]>>;
 };
 
 export const reducers: UserReducers = {
   clearMessages(state) {
     state.error = null;
     state.successMessage = null;
+  },
+  setSelectedUserPermissions: (state, action: PayloadAction<Permission[]>) => {
+    state.selectedUserPermissions = action.payload;
   },
   setSelectedUser(state, action) {
     state.selectedUser = action.payload;
@@ -59,7 +65,8 @@ export const extraReducers = (builder: ActionReducerMapBuilder<UserState>) => {
     })
     .addCase(fetchSingleUser.fulfilled, (state, action) => {
       state.loading = false;
-      state.selectedUser = action.payload as User;
+      state.selectedUser = action.payload.user;
+      state.selectedUserPermissions = action.payload.permissions;
     })
     .addCase(fetchSingleUser.rejected, (state, action) => {
       state.loading = false;
@@ -167,5 +174,54 @@ export const extraReducers = (builder: ActionReducerMapBuilder<UserState>) => {
     .addCase(restoreAllDeletedUsers.rejected, (state, action) => {
       state.deletedUsers.loading = false;
       state.error = action.payload?.message || 'Failed to restore all users';
+    })
+    .addCase(deactivateUser.pending, (state) => {
+      state.loading = true;
+      state.successMessage = null;
+      state.error = null;
+    })
+    .addCase(deactivateUser.fulfilled, (state, action) => {
+      state.loading = false;
+      state.successMessage = action.payload.message;
+      // Update the user's status in the users array if needed
+      state.users = state.users.map(user =>
+        user.id === action.payload.data.user_id
+          ? { ...user, status: 'inactive' }
+          : user
+      );
+      // Update stats
+      if (state.stats.activeUsers > 0) {
+        state.stats.activeUsers -= 1;
+      }
+      state.stats.inactiveUsers += 1;
+    })
+    .addCase(deactivateUser.rejected, (state, action) => {
+      state.loading = false;
+      state.error = action.payload?.message || 'Failed to deactivate user';
+    })
+    .addCase(activateUser.pending, (state) => {
+      state.loading = true;
+      state.successMessage = null;
+      state.error = null;
+    })
+    .addCase(activateUser.fulfilled, (state, action) => {
+      state.loading = false;
+      state.successMessage = action.payload.message;
+      // Update the user's status in the users array if needed
+      state.users = state.users.map(user =>
+        user.id === action.payload.data.user_id
+          ? { ...user, status: 'active' }
+          : user
+      );
+      // Update stats
+      if (state.stats.inactiveUsers > 0) {
+        state.stats.inactiveUsers -= 1;
+      }
+      state.stats.activeUsers += 1;
+    })
+    .addCase(activateUser.rejected, (state, action) => {
+      state.loading = false;
+      state.error = action.payload?.message || 'Failed to activate user';
     });
+
 };

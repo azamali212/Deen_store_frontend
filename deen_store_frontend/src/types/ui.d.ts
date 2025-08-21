@@ -71,8 +71,6 @@ export interface TableProps {
   expandedRows?: Set<string>;
   onRowExpand?: (id: string) => void;
   expandedContent?: (row: any) => React.ReactNode;
-
-
   selectable?: boolean;
   onSelectRow?: (id: number | string, isSelected: boolean) => void;
   onSelectAll?: (isSelected: boolean) => void;
@@ -82,6 +80,9 @@ export interface TableProps {
   headerClassName?: string;
   cellClassName?: string;
   pageSize?: number;
+  showUserStats?: boolean;
+  addButtonText?: string;
+  onAddClick?: () => void;
 }
 
 
@@ -196,8 +197,9 @@ export interface SidebarItemProps {
 }
 
 export interface DropdownItem {
-  label?: string;
+  label?: React.ReactNode; 
   href?: string;
+  icon?: React.ReactNode;
   onClick?: () => void;
 }
 
@@ -205,9 +207,12 @@ export interface DropDownProps {
   icon?: React.ReactElement<{ size?: number; strokeWidth?: number } & React.SVGProps<SVGSVGElement>>;
   label?: string;
   collapsed?: boolean;
-  items: DropdownItem[];
+  items?: DropdownItem[]; // Made items optional
   variant?: 'sidebar' | 'navbar';
   showTooltip?: boolean;
+  children?: React.ReactNode;
+  align?: 'start' | 'end';
+  trigger?: React.ReactNode;
 }
 
 export interface DashboardLayoutProps {
@@ -301,7 +306,7 @@ export interface PaginationProps {
 export interface LoginPayload {
   email: string;
   password: string;
-  guard?: string; // 
+  guard?: string; // git
 }
 
 export interface LoginResponse {
@@ -492,6 +497,10 @@ export interface Permission {
   category?: string;
   roles?: Role[];
   color?: string; // 
+  pivot?: {
+    role_id?: number;
+    permission_id?: number;
+  };
 }
 
 export interface PermissionState {
@@ -577,6 +586,9 @@ export interface User {
   email: string;
   location?: string;
   roles?: Array<{ name: string }>;
+  user_id?: string; // Alternative ID field
+  user_name?: string; // Alternative name field
+ 
 
   confirm_password?: string | null;
   stripe_id?: string | null;
@@ -624,6 +636,7 @@ export interface UserState {
   permissions?: Permission[];
   location?: string;
   deletedUsers: DeletedUsersState;
+  selectedUserPermissions: Permission[]; 
 }
 
 //Delete Interface 

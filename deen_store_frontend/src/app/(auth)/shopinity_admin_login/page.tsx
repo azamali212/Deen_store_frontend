@@ -61,10 +61,11 @@ const AdminLogin = () => {
 
     useEffect(() => {
         if (isAuthenticated) {
-          // Only redirect if authenticated in THIS tab
+          // Get the current tab's token specifically
           const currentTabId = sessionStorage.getItem('tabId');
           const currentToken = localStorage.getItem(`auth_token_${currentTabId}`);
           
+          // Only redirect if THIS tab has a token
           if (currentToken) {
             router.replace('/dashboard');
           }

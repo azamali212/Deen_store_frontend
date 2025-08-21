@@ -1,5 +1,5 @@
 import api from "@/services/api";
-import { ErrorResponse, User, UserState } from "@/types/ui";
+import { ErrorResponse, User, UserState, Permission } from "@/types/ui";
 import { createAsyncThunk, createSlice, PayloadAction } from "@reduxjs/toolkit";
 import { AxiosError } from "axios";
 import Cookies from 'js-cookie';
@@ -16,6 +16,7 @@ export const initialState: UserState = {
         per_page: 15,
         last_page: 1,
     },
+    selectedUserPermissions: [],
     successMessage: null,
     selectedUser: null,
     stats: {
@@ -101,7 +102,7 @@ export const fetchUsers = createAsyncThunk<
 
 
 export const fetchSingleUser = createAsyncThunk<
-    User,
+    { user: User; permissions: Permission[] }, // Updated return type
     { userId: string; relations?: string },
     { rejectValue: ErrorResponse }
 >(
@@ -161,7 +162,7 @@ export const softDeleteUser = createAsyncThunk<
             roles: string[];
         };
     },
-    string, // userId as string parameter
+    string,
     { rejectValue: ErrorResponse }
 >(
     'users/softDeleteUser',
@@ -172,24 +173,29 @@ export const softDeleteUser = createAsyncThunk<
                 throw new Error('Authentication token not found');
             }
 
+            // Make sure the endpoint is correct (changed from /user to /users)
             const response = await api.delete(`/user/${userId}`, {
-                headers: { Authorization: `Bearer ${token}` },
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                },
             });
 
-            // Handle the nested response structure
-            const responseData = response.data.data?.original || response.data;
+            // Simplify the response handling
+            const responseData = response.data;
 
             if (!responseData.success) {
                 throw new Error(responseData.message || 'Failed to delete user');
             }
 
             // Refresh users list after deletion
-            dispatch(fetchUsers({ page: 1 }));
+            await dispatch(fetchUsers({ page: 1 }));
 
             return {
                 success: responseData.success,
                 message: responseData.message,
                 data: responseData.data
+
             };
         } catch (err) {
             const error = err as AxiosError<ErrorResponse>;
@@ -463,6 +469,117 @@ export const restoreAllDeletedUsers = createAsyncThunk<
     }
 );
 
+// Add these thunks after your existing thunks in userSlice.ts
+
+export const deactivateUser = createAsyncThunk<
+    {
+        success: boolean;
+        message: string;
+        data: {
+            user_id: string;
+            status: string;
+        };
+    },
+    { userId: string; reason?: string },
+    { rejectValue: ErrorResponse }
+>(
+    'users/deactivateUser',
+    async ({ userId, reason }, { rejectWithValue, dispatch }) => {
+        try {
+            const token = Cookies.get('token');
+            const response = await api.post(`/users/${userId}/deactivate`,
+                { reason },
+                {
+                    headers: { Authorization: `Bearer ${token}` },
+                }
+            );
+
+            const responseData = response.data.data?.original || response.data;
+
+            if (!responseData.success) {
+                throw new Error(responseData.message || 'Failed to deactivate user');
+            }
+
+            // Refresh users list after deactivation
+            await dispatch(fetchUsers({ page: 1 }));
+
+            return {
+                success: responseData.success,
+                message: responseData.message,
+                data: responseData.data
+            };
+        } catch (err) {
+            const error = err as AxiosError<ErrorResponse>;
+            if (error.response) {
+                return rejectWithValue({
+                    message: error.response.data?.message || 'Failed to deactivate user',
+                    details: error.response.data?.details
+                });
+            }
+            return rejectWithValue({
+                message: (err as Error).message || 'Network error while deactivating user'
+            });
+        }
+    }
+);
+
+export const activateUser = createAsyncThunk<
+    {
+        success: boolean;
+        message: string;
+        data: {
+            user_id: string;
+            status: string;
+        };
+    },
+    { userId: string; reason?: string },
+    { rejectValue: ErrorResponse }
+>(
+    'users/activateUser',
+    async ({ userId, reason }, { rejectWithValue, dispatch }) => {
+        try {
+            const token = Cookies.get('token');
+            const response = await api.post(`/users/${userId}/activate`,
+                { reason },
+                {
+                    headers: { Authorization: `Bearer ${token}` },
+                }
+            );
+
+            const responseData = response.data.data?.original || response.data;
+
+            if (!responseData.success) {
+                throw new Error(responseData.message || 'Failed to activate user');
+            }
+
+            // Refresh users list after activation
+            await dispatch(fetchUsers({ page: 1 }));
+
+            return {
+                success: responseData.success,
+                message: responseData.message,
+                data: responseData.data
+            };
+        } catch (err) {
+            const error = err as AxiosError<ErrorResponse>;
+            if (error.response) {
+                return rejectWithValue({
+                    message: error.response.data?.message || 'Failed to activate user',
+                    details: error.response.data?.details
+                });
+            }
+            return rejectWithValue({
+                message: (err as Error).message || 'Network error while activating user'
+            });
+        }
+    }
+);
+
+//Assgin Permissions to User Assgin Role To user and Sync and revoke permissions
+
+
+
+
 const userSlice = createSlice({
     name: 'users',
     initialState,
@@ -473,5 +590,5 @@ const userSlice = createSlice({
 });
 
 
-export const { clearMessages, setSelectedUser, resetUserState } = userSlice.actions;
+export const { clearMessages, setSelectedUser, resetUserState, setSelectedUserPermissions } = userSlice.actions;
 export default userSlice.reducer;

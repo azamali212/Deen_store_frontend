@@ -14,7 +14,9 @@ import {
   forceDeleteUser,
   restoreDeletedUser,
   restoreAllDeletedUsers,
-  bulkDeleteSoftDeletedUsers
+  bulkDeleteSoftDeletedUsers,
+  deactivateUser as deactivateUserAction,
+  activateUser as activateUserAction
 } from '@/features/user/userSlice';
 import { DetailedUser, TableUser, User } from '@/types/ui';
 
@@ -225,6 +227,51 @@ export const useUser = () => {
     [dispatch]
   );
 
+  const deactivateUser = useCallback(
+    async (userId: string, reason?: string): Promise<{ success: boolean; message: string }> => {
+      try {
+        const result = await dispatch(deactivateUserAction({ userId, reason }));
+        if (deactivateUserAction.fulfilled.match(result)) {
+          return { success: true, message: result.payload.message };
+        }
+        return {
+          success: false,
+          message: result.payload?.message || 'Failed to deactivate user'
+        };
+      } catch (error) {
+        console.error('Error deactivating user:', error);
+        return {
+          success: false,
+          message: 'An unexpected error occurred'
+        };
+      }
+    },
+    [dispatch]
+  );
+
+  const activateUser = useCallback(
+    async (userId: string, reason?: string): Promise<{ success: boolean; message: string }> => {
+      try {
+        const result = await dispatch(activateUserAction({ userId, reason }));
+        if (activateUserAction.fulfilled.match(result)) {
+          return { success: true, message: result.payload.message };
+        }
+        return {
+          success: false,
+          message: result.payload?.message || 'Failed to activate user'
+        };
+      } catch (error) {
+        console.error('Error activating user:', error);
+        return {
+          success: false,
+          message: 'An unexpected error occurred'
+        };
+      }
+    },
+    [dispatch]
+  );
+
+
   return {
     // State
     users,
@@ -247,6 +294,8 @@ export const useUser = () => {
     restoreUser,
     forceDeleteUser: forceDeletePermanently,
     bulkDeleteUsers,
-    restoreAllUsers
+    restoreAllUsers,
+    deactivateUser,
+    activateUser
   };
 };
