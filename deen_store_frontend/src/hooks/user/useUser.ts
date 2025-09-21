@@ -16,7 +16,11 @@ import {
   restoreAllDeletedUsers,
   bulkDeleteSoftDeletedUsers,
   deactivateUser as deactivateUserAction,
-  activateUser as activateUserAction
+  activateUser as activateUserAction,
+  assignRolesToUser as assignRolesToUserAction,
+  removeRolesFromUser as removeRolesFromUserAction,
+  changeUserRole as changeUserRoleAction,
+  syncUserRoles as syncUserRolesAction
 } from '@/features/user/userSlice';
 import { DetailedUser, TableUser, User } from '@/types/ui';
 
@@ -271,6 +275,96 @@ export const useUser = () => {
     [dispatch]
   );
 
+  // Add these functions to the useUser hook return
+  const assignRoles = useCallback(
+    async (userId: string, roles: string[], sync: boolean = true): Promise<{ success: boolean; message: string }> => {
+      try {
+        const result = await dispatch(assignRolesToUserAction({ userId, roles, sync }));
+        if (assignRolesToUserAction.fulfilled.match(result)) {
+          return { success: true, message: result.payload.message };
+        }
+        return {
+          success: false,
+          message: result.payload?.message || 'Failed to assign roles'
+        };
+      } catch (error) {
+        console.error('Error assigning roles:', error);
+        return {
+          success: false,
+          message: 'An unexpected error occurred'
+        };
+      }
+    },
+    [dispatch]
+  );
+
+  const removeRoles = useCallback(
+    async (userId: string, roles: string[]): Promise<{ success: boolean; message: string }> => {
+      try {
+        const result = await dispatch(removeRolesFromUserAction({ userId, roles }));
+        if (removeRolesFromUserAction.fulfilled.match(result)) {
+          return { success: true, message: result.payload.message };
+        }
+        return {
+          success: false,
+          message: result.payload?.message || 'Failed to remove roles'
+        };
+      } catch (error) {
+        console.error('Error removing roles:', error);
+        return {
+          success: false,
+          message: 'An unexpected error occurred'
+        };
+      }
+    },
+    [dispatch]
+  );
+
+  const changeRole = useCallback(
+    async (userId: string, newRole: string): Promise<{ success: boolean; message: string }> => {
+      try {
+        const result = await dispatch(changeUserRoleAction({ userId, newRole }));
+        if (changeUserRoleAction.fulfilled.match(result)) {
+          return { success: true, message: result.payload.message };
+        }
+        return {
+          success: false,
+          message: result.payload?.message || 'Failed to change user role'
+        };
+      } catch (error) {
+        console.error('Error changing user role:', error);
+        return {
+          success: false,
+          message: 'An unexpected error occurred'
+        };
+      }
+    },
+    [dispatch]
+  );
+
+  // Add the syncRoles function
+  const syncRoles = useCallback(
+    async (userId: string, roles: string[], sync: boolean = true): Promise<{ success: boolean; message: string }> => {
+      try {
+        const result = await dispatch(syncUserRolesAction({ userId, roles, sync }));
+        if (syncUserRolesAction.fulfilled.match(result)) {
+          return { success: true, message: result.payload.message };
+        }
+        return {
+          success: false,
+          message: result.payload?.message || 'Failed to sync roles'
+        };
+      } catch (error) {
+        console.error('Error syncing roles:', error);
+        return {
+          success: false,
+          message: 'An unexpected error occurred'
+        };
+      }
+    },
+    [dispatch]
+  );
+
 
   return {
     // State
@@ -296,6 +390,10 @@ export const useUser = () => {
     bulkDeleteUsers,
     restoreAllUsers,
     deactivateUser,
-    activateUser
+    activateUser,
+    assignRoles,
+    removeRoles,
+    changeRole,
+    syncRoles
   };
 };

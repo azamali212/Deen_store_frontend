@@ -1,6 +1,6 @@
 "use client";
-import React, { useState } from 'react';
-import { X, Save, Shield, Check } from 'lucide-react';
+import React, { useState, useMemo, useCallback, useEffect } from 'react';
+import { X, Save, Shield, Check, Search, ChevronDown, ChevronUp } from 'lucide-react';
 import Model from '@/components/ui/modals/model';
 import Button from '@/components/ui/buttons/button';
 import Spinner from '@/components/ui/spinner/Spinner';
@@ -19,7 +19,7 @@ interface UserType {
   permissions?: Permission[];
 }
 
-interface PermissionUserModel {
+interface PermissionUserModelProps {
   user: UserType;
   isModalOpen: boolean;
   setIsModalOpen: (v: boolean) => void;
@@ -28,7 +28,7 @@ interface PermissionUserModel {
   isSaving?: boolean;
 }
 
-const PermissionUserModel: React.FC<PermissionUserModel> = ({
+const PermissionUserModel: React.FC<PermissionUserModelProps> = ({
   user,
   isModalOpen,
   setIsModalOpen,
@@ -36,21 +36,90 @@ const PermissionUserModel: React.FC<PermissionUserModel> = ({
   onSave,
   isSaving = false
 }) => {
-  const [selectedPermissions, setSelectedPermissions] = useState<(string | number)[]>(
-    user.permissions?.map(p => p.id) || []
+  // Memoize initial permissions to prevent unnecessary recalculations
+  const initialPermissions = useMemo(() => 
+    user.permissions?.map(p => p.id) || [], 
+    [user.permissions]
   );
+  
+  const [selectedPermissions, setSelectedPermissions] = useState<(string | number)[]>(initialPermissions);
   const [pendingChanges, setPendingChanges] = useState(0);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [expandedCategories, setExpandedCategories] = useState<Record<string, boolean>>({});
+  const [visibleItems, setVisibleItems] = useState<Record<string, number>>({});
 
-  const handlePermissionToggle = (permissionId: string | number) => {
-    setSelectedPermissions(prev => {
-      if (prev.includes(permissionId)) {
-        return prev.filter(id => id !== permissionId);
-      } else {
-        return [...prev, permissionId];
+  // Initialize expanded state for categories
+  useEffect(() => {
+    if (isModalOpen) {
+      const initialExpanded: Record<string, boolean> = {};
+      const initialVisible: Record<string, number> = {};
+      
+      Object.keys(permissionCategories).forEach(category => {
+        initialExpanded[category] = false;
+        initialVisible[category] = 10; // Show 10 items initially
+      });
+      
+      setExpandedCategories(initialExpanded);
+      setVisibleItems(initialVisible);
+    }
+  }, [isModalOpen]);
+
+  // Categorize permissions using useMemo to prevent recalculations on every render
+  const permissionCategories = useMemo(() => {
+    const userPermissions = permissions.filter(p => 
+      p.name.toLowerCase().includes('user')
+    );
+    
+    const contentPermissions = permissions.filter(p => 
+      p.name.toLowerCase().includes('content') || p.name.toLowerCase().includes('post')
+    );
+    
+    const systemPermissions = permissions.filter(p => 
+      !userPermissions.includes(p) && !contentPermissions.includes(p)
+    );
+    
+    return {
+      'User Management': userPermissions,
+      'Content Management': contentPermissions,
+      'System': systemPermissions
+    };
+  }, [permissions]);
+
+  // Filter permissions based on search term
+  const filteredPermissionCategories = useMemo(() => {
+    if (!searchTerm) return permissionCategories;
+    
+    const result: Record<string, Permission[]> = {};
+    
+    Object.entries(permissionCategories).forEach(([category, perms]) => {
+      const filtered = perms.filter(p => 
+        p.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
+        (p.description && p.description.toLowerCase().includes(searchTerm.toLowerCase()))
+      );
+      
+      if (filtered.length > 0) {
+        result[category] = filtered;
       }
     });
-    setPendingChanges(prev => prev + 1);
-  };
+    
+    return result;
+  }, [permissionCategories, searchTerm]);
+
+  // Use useCallback for toggle function to prevent unnecessary re-renders
+  const handlePermissionToggle = useCallback((permissionId: string | number) => {
+    setSelectedPermissions(prev => {
+      const newPermissions = prev.includes(permissionId)
+        ? prev.filter(id => id !== permissionId)
+        : [...prev, permissionId];
+      
+      // Calculate changes by comparing with initial permissions
+      const hasChanges = newPermissions.length !== initialPermissions.length || 
+        initialPermissions.some(id => !newPermissions.includes(id));
+      
+      setPendingChanges(hasChanges ? 1 : 0);
+      return newPermissions;
+    });
+  }, [initialPermissions]);
 
   const handleSave = async () => {
     if (onSave) {
@@ -64,18 +133,56 @@ const PermissionUserModel: React.FC<PermissionUserModel> = ({
     }
   };
 
-  const handleClose = () => {
-    // Reset changes when closing
-    setSelectedPermissions(user.permissions?.map(p => p.id) || []);
+  const handleClose = useCallback(() => {
+    // Reset to initial state
+    setSelectedPermissions(initialPermissions);
     setPendingChanges(0);
+    setSearchTerm('');
     setIsModalOpen(false);
-  };
+  }, [initialPermissions, setIsModalOpen]);
 
-  const permissionCategories = {
-    'User Management': permissions.filter(p => p.name.toLowerCase().includes('user')),
-    'Content Management': permissions.filter(p => p.name.toLowerCase().includes('content') || p.name.toLowerCase().includes('post')),
-    'System': permissions.filter(p => !p.name.toLowerCase().includes('user') && !p.name.toLowerCase().includes('content') && !p.name.toLowerCase().includes('post'))
-  };
+  const toggleCategory = useCallback((category: string) => {
+    setExpandedCategories(prev => ({
+      ...prev,
+      [category]: !prev[category]
+    }));
+  }, []);
+
+  const showMore = useCallback((category: string) => {
+    setVisibleItems(prev => ({
+      ...prev,
+      [category]: prev[category] + 20
+    }));
+  }, []);
+
+  // Memoize the permission items to prevent unnecessary re-renders
+  const renderPermissionItem = useCallback((permission: Permission) => {
+    const isSelected = selectedPermissions.includes(permission.id);
+    
+    return (
+      <label key={permission.id} className="flex items-center p-3 bg-gray-50 rounded-lg border border-gray-200 hover:bg-gray-100 transition-colors cursor-pointer">
+        <input
+          type="checkbox"
+          checked={isSelected}
+          onChange={() => handlePermissionToggle(permission.id)}
+          className="hidden"
+        />
+        <div className={`w-5 h-5 rounded border-2 flex items-center justify-center mr-3 transition-colors ${
+          isSelected
+            ? 'bg-violet-600 border-violet-600'
+            : 'bg-white border-gray-300'
+        }`}>
+          {isSelected && <Check className="w-3 h-3 text-white" />}
+        </div>
+        <div className="flex-1">
+          <p className="text-sm font-medium text-gray-900">{permission.name}</p>
+          {permission.description && (
+            <p className="text-xs text-gray-500 mt-1">{permission.description}</p>
+          )}
+        </div>
+      </label>
+    );
+  }, [selectedPermissions, handlePermissionToggle]);
 
   return (
     <Model
@@ -99,10 +206,24 @@ const PermissionUserModel: React.FC<PermissionUserModel> = ({
             <button
               onClick={handleClose}
               className="text-gray-400 hover:text-gray-600 transition-colors p-1 rounded-full hover:bg-gray-100"
+              aria-label="Close modal"
             >
               <X className="w-5 h-5" />
             </button>
           </div>
+          
+          {/* Search Bar */}
+          <div className="mt-4 relative">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+            <input
+              type="text"
+              placeholder="Search permissions..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-violet-500 focus:border-transparent"
+            />
+          </div>
+          
           <p className="text-sm text-gray-600 mt-2">
             Manage direct permissions for this user
           </p>
@@ -110,58 +231,64 @@ const PermissionUserModel: React.FC<PermissionUserModel> = ({
 
         {/* Content */}
         <div className="flex-1 overflow-y-auto p-6">
-          <div className="grid grid-cols-1 gap-6">
-            {Object.entries(permissionCategories).map(([category, categoryPermissions]) => (
-              categoryPermissions.length > 0 && (
-                <div key={category} className="bg-white rounded-xl border border-gray-200 p-5">
-                  <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
-                    <Shield className="w-5 h-5 text-violet-600" />
-                    {category} Permissions
-                  </h3>
-                  
-                  <div className="grid grid-cols-1 gap-2">
-                    {categoryPermissions.map(permission => (
-                      <label key={permission.id} className="flex items-center p-3 bg-gray-50 rounded-lg border border-gray-200 hover:bg-gray-100 transition-colors cursor-pointer">
-                        <input
-                          type="checkbox"
-                          checked={selectedPermissions.includes(permission.id)}
-                          onChange={() => handlePermissionToggle(permission.id)}
-                          className="hidden"
-                        />
-                        <div className={`w-5 h-5 rounded border-2 flex items-center justify-center mr-3 transition-colors ${
-                          selectedPermissions.includes(permission.id)
-                            ? 'bg-violet-600 border-violet-600'
-                            : 'bg-white border-gray-300'
-                        }`}>
-                          {selectedPermissions.includes(permission.id) && (
-                            <Check className="w-3 h-3 text-white" />
-                          )}
+          {Object.keys(filteredPermissionCategories).length === 0 ? (
+            <div className="text-center py-8 text-gray-500">
+              No permissions found matching "{searchTerm}"
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 gap-6">
+              {Object.entries(filteredPermissionCategories).map(([category, categoryPermissions]) => 
+                categoryPermissions.length > 0 && (
+                  <div key={category} className="bg-white rounded-xl border border-gray-200 p-5">
+                    <div 
+                      className="flex items-center justify-between cursor-pointer"
+                      onClick={() => toggleCategory(category)}
+                    >
+                      <h3 className="text-lg font-semibold text-gray-800 flex items-center gap-2">
+                        <Shield className="w-5 h-5 text-violet-600" />
+                        {category} Permissions ({categoryPermissions.length})
+                      </h3>
+                      {expandedCategories[category] ? (
+                        <ChevronUp className="w-5 h-5 text-gray-500" />
+                      ) : (
+                        <ChevronDown className="w-5 h-5 text-gray-500" />
+                      )}
+                    </div>
+                    
+                    {(expandedCategories[category] || searchTerm) && (
+                      <div className="mt-4">
+                        <div className="grid grid-cols-1 gap-2">
+                          {categoryPermissions
+                            .slice(0, searchTerm ? categoryPermissions.length : visibleItems[category] || 10)
+                            .map(renderPermissionItem)}
                         </div>
-                        <div className="flex-1">
-                          <p className="text-sm font-medium text-gray-900">{permission.name}</p>
-                          {permission.description && (
-                            <p className="text-xs text-gray-500 mt-1">{permission.description}</p>
-                          )}
-                        </div>
-                      </label>
-                    ))}
+                        
+                        {!searchTerm && categoryPermissions.length > (visibleItems[category] || 10) && (
+                          <button
+                            onClick={() => showMore(category)}
+                            className="mt-3 text-sm text-violet-600 hover:text-violet-800 font-medium"
+                          >
+                            Show more ({categoryPermissions.length - (visibleItems[category] || 10)} remaining)
+                          </button>
+                        )}
+                      </div>
+                    )}
                   </div>
-                </div>
-              )
-            ))}
-          </div>
+                )
+              )}
+            </div>
+          )}
         </div>
 
         {/* Footer */}
         <div className="border-t border-gray-200 bg-gray-50 p-4">
           <div className="flex items-center justify-between">
-            {pendingChanges > 0 ? (
-              <span className="text-sm text-gray-500">
-                {pendingChanges} change{pendingChanges !== 1 ? 's' : ''} pending
-              </span>
-            ) : (
-              <span className="text-sm text-gray-500">No changes made</span>
-            )}
+            <span className="text-sm text-gray-500">
+              {pendingChanges > 0 
+                ? `${pendingChanges} change${pendingChanges !== 1 ? 's' : ''} pending`
+                : "No changes made"
+              }
+            </span>
             
             <div className="flex gap-2">
               <Button
@@ -194,4 +321,4 @@ const PermissionUserModel: React.FC<PermissionUserModel> = ({
   );
 };
 
-export default PermissionUserModel;
+export default React.memo(PermissionUserModel);

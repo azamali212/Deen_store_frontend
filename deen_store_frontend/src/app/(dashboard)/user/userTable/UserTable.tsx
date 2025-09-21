@@ -275,14 +275,14 @@ const UserTable: React.FC<UserTableProps> = ({ onOpenRecycleBin }) => {
                     </div>
                 );
             }
-    
+
             const isActive = value === 'active';
-    
+
             // Get the user ID - handle both direct ID and nested user object
-            const userId = row.id 
+            const userId = row.id
                 ? row.id.replace('user-row-', '')
                 : row.user?.id;
-    
+
             if (!userId) {
                 console.error('Could not extract user ID from:', row);
                 return (
@@ -291,19 +291,19 @@ const UserTable: React.FC<UserTableProps> = ({ onOpenRecycleBin }) => {
                     </div>
                 );
             }
-    
+
             const handleToggle = (isSelected: boolean) => {
                 const user = users.find(u => u.id === userId);
                 if (!user) {
                     toast.error(`User with ID ${userId} not found`);
                     return;
                 }
-                
+
                 setSelectedUser(user);
                 setStatusAction(isSelected ? 'activate' : 'deactivate');
                 setIsStatusDialogOpen(true);
             };
-    
+
             return (
                 <div className="flex items-center gap-2">
                     <CustomSwitch

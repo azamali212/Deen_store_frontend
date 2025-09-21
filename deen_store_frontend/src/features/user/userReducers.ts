@@ -9,7 +9,11 @@ import {
   bulkDeleteSoftDeletedUsers,
   restoreAllDeletedUsers,
   deactivateUser,
-  activateUser
+  activateUser,
+  assignRolesToUser,
+  removeRolesFromUser,
+  changeUserRole,
+  syncUserRoles
 } from "./userSlice";
 import { User, UserState, Permission } from "@/types/ui";
 import { initialState } from "./userSlice";
@@ -222,6 +226,147 @@ export const extraReducers = (builder: ActionReducerMapBuilder<UserState>) => {
     .addCase(activateUser.rejected, (state, action) => {
       state.loading = false;
       state.error = action.payload?.message || 'Failed to activate user';
-    });
+    })
+    // Add these cases to your existing extraReducers builder
+    // Add these cases to your existing extraReducers builder
+    .addCase(assignRolesToUser.pending, (state) => {
+      state.loading = true;
+      state.successMessage = null;
+      state.error = null;
+    })
+    .addCase(assignRolesToUser.fulfilled, (state, action) => {
+      state.loading = false;
+      state.successMessage = action.payload.message;
 
+      // Convert string roles to Role objects if needed
+      const roleObjects = action.payload.data.roles.map(role =>
+        typeof role === 'string' ? { name: role } : role
+      );
+
+      // Update the user in the users list if they exist
+      if (state.selectedUser && state.selectedUser.id === action.payload.data.user.id) {
+        state.selectedUser.roles = roleObjects;
+      }
+
+      // Also update in the main users list
+      state.users = state.users.map(user =>
+        user.id === action.payload.data.user.id
+          ? { ...user, roles: roleObjects }
+          : user
+      );
+    })
+    .addCase(assignRolesToUser.rejected, (state, action) => {
+      state.loading = false;
+      state.error = action.payload?.message || 'Failed to assign roles';
+    })
+    .addCase(removeRolesFromUser.pending, (state) => {
+      state.loading = true;
+      state.successMessage = null;
+      state.error = null;
+    })
+    .addCase(removeRolesFromUser.fulfilled, (state, action) => {
+      state.loading = false;
+      state.successMessage = action.payload.message;
+
+      // Convert string roles to Role objects if needed
+      const roleObjects = action.payload.data.remaining_roles.map(role =>
+        typeof role === 'string' ? { name: role } : role
+      );
+
+      // Update the user in the users list if they exist
+      if (state.selectedUser && state.selectedUser.id === action.payload.data.user.id) {
+        state.selectedUser.roles = roleObjects;
+      }
+
+      // Also update in the main users list
+      state.users = state.users.map(user =>
+        user.id === action.payload.data.user.id
+          ? { ...user, roles: roleObjects }
+          : user
+      );
+    })
+    .addCase(removeRolesFromUser.rejected, (state, action) => {
+      state.loading = false;
+      state.error = action.payload?.message || 'Failed to remove roles';
+    })
+    .addCase(changeUserRole.pending, (state) => {
+      state.loading = true;
+      state.successMessage = null;
+      state.error = null;
+    })
+    .addCase(changeUserRole.fulfilled, (state, action) => {
+      state.loading = false;
+      state.successMessage = action.payload.message;
+
+      // The user details will be updated by the fetchSingleUser call in the thunk
+    })
+    .addCase(changeUserRole.rejected, (state, action) => {
+      state.loading = false;
+      state.error = action.payload?.message || 'Failed to change user role';
+    })
+    .addCase(syncUserRoles.pending, (state) => {
+      state.loading = true;
+      state.successMessage = null;
+      state.error = null;
+    })
+    // features/user/userReducers.ts
+    .addCase(syncUserRoles.fulfilled, (state, action) => {
+      state.loading = false;
+
+      // Handle empty response
+      if (!action.payload || Object.keys(action.payload).length === 0) {
+        state.successMessage = 'Roles synced successfully';
+        return;
+      }
+
+      // Set success message
+      state.successMessage = action.payload.message || 'Roles synced successfully';
+
+      // Extract data from the response
+      const responseData = action.payload.data;
+
+      if (!responseData) {
+        console.warn('No data found in response');
+        return;
+      }
+
+      // Extract roles data - use the correct field from the response
+      const rolesData = responseData.roles || responseData.final_roles || responseData.new_roles || [];
+
+      // Extract user ID - use the correct field from the response
+      const userId = responseData.user_id;
+
+      if (!Array.isArray(rolesData) || rolesData.length === 0) {
+        console.warn('No roles data found in response');
+        return;
+      }
+
+      if (!userId) {
+        console.warn('User ID not found in response');
+        return;
+      }
+
+      // Convert string roles to Role objects if needed
+      const roleObjects = rolesData.map(role =>
+        typeof role === 'string' ? { name: role } : role
+      );
+
+      // Update the selected user if it exists and matches
+      // Note: Make sure to compare with the correct ID field (user_id vs id)
+      if (state.selectedUser && (state.selectedUser.id === userId || state.selectedUser.user_id === userId)) {
+        state.selectedUser.roles = roleObjects;
+      }
+
+      // Update the user in the main list
+      // Note: Check both id and user_id fields since your User type has both
+      state.users = state.users.map(user =>
+        (user.id === userId || user.user_id === userId)
+          ? { ...user, roles: roleObjects }
+          : user
+      );
+    })
+    .addCase(syncUserRoles.rejected, (state, action) => {
+      state.loading = false;
+      state.error = action.payload?.message || 'Failed to sync user roles';
+    });
 };

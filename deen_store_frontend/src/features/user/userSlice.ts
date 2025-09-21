@@ -575,9 +575,222 @@ export const activateUser = createAsyncThunk<
     }
 );
 
-//Assgin Permissions to User Assgin Role To user and Sync and revoke permissions
+//Assgin Role to User Assgin Role To user and Sync and revoke Role
+// Assign roles to user
+export const assignRolesToUser = createAsyncThunk<
+    {
+        success: boolean;
+        message: string;
+        data: {
+            user: {
+                id: string;
+                name: string;
+                email: string;
+            };
+            roles: string[];
+        };
+    },
+    { userId: string; roles: string[]; sync?: boolean },
+    { rejectValue: ErrorResponse }
+>(
+    'users/assignRolesToUser',
+    async ({ userId, roles, sync = true }, { rejectWithValue }) => {
+        try {
+            const token = Cookies.get('token');
+            const response = await api.post(`/users/${userId}/roles`, {
+                roles,
+                sync
+            }, {
+                headers: { Authorization: `Bearer ${token}` },
+            });
 
+            const responseData = response.data.data?.original || response.data;
 
+            if (!responseData.success) {
+                throw new Error(responseData.message || 'Failed to assign roles');
+            }
+
+            return responseData;
+        } catch (err) {
+            const error = err as AxiosError<ErrorResponse>;
+            if (error.response) {
+                return rejectWithValue({
+                    message: error.response.data?.message || 'Failed to assign roles',
+                    details: error.response.data?.details
+                });
+            }
+            return rejectWithValue({
+                message: (err as Error).message || 'Network error while assigning roles'
+            });
+        }
+    }
+);
+
+// features/user/userSlice.ts
+// features/user/userSlice.ts
+export const syncUserRoles = createAsyncThunk<
+    {
+        success: boolean;
+        message: string;
+        data: {
+            user_id: string;
+            user_name: string;
+            previous_roles: string[];
+            new_roles: string[];
+            final_roles: string[];
+            sync_mode: string;
+            roles: string[];
+        };
+    },
+    { userId: string; roles: string[]; sync: boolean },
+    { rejectValue: ErrorResponse }
+>(
+    'users/syncUserRoles',
+    async ({ userId, roles, sync }, { rejectWithValue }) => {
+        try {
+            const token = Cookies.get('token');
+            const response = await api.post(`/user/${userId}/sync-roles`, {
+                roles,
+                sync
+            }, {
+                headers: { Authorization: `Bearer ${token}` },
+            });
+
+            console.log('Sync roles API response:', response.data);
+
+            // Handle empty response
+            if (!response.data || Object.keys(response.data).length === 0) {
+                // Return a mock response structure for empty responses
+                return {
+                    success: true,
+                    message: 'Roles synced successfully',
+                    data: {
+                        user_id: userId,
+                        user_name: 'User',
+                        previous_roles: [],
+                        new_roles: roles,
+                        final_roles: roles,
+                        sync_mode: sync ? 'replace' : 'add',
+                        roles: roles
+                    }
+                };
+            }
+
+            const responseData = response.data;
+
+            if (responseData.success === false) {
+                throw new Error(responseData.message || 'Failed to sync roles');
+            }
+
+            return responseData;
+        } catch (err) {
+            const error = err as AxiosError<ErrorResponse>;
+            console.error('Sync roles error:', error.response?.data || error.message);
+
+            if (error.response) {
+                return rejectWithValue({
+                    message: error.response.data?.message || 'Failed to sync roles',
+                    details: error.response.data?.details
+                });
+            }
+            return rejectWithValue({
+                message: (err as Error).message || 'Network error while syncing roles'
+            });
+        }
+    }
+);
+
+// Remove roles from user
+export const removeRolesFromUser = createAsyncThunk<
+    {
+        success: boolean;
+        message: string;
+        data: {
+            user: User;
+            remaining_roles: string[];
+        };
+    },
+    { userId: string; roles: string[] },
+    { rejectValue: ErrorResponse }
+>(
+    'users/removeRolesFromUser',
+    async ({ userId, roles }, { rejectWithValue }) => {
+        try {
+            const token = Cookies.get('token');
+            const response = await api.delete(`/users/${userId}/roles`, {
+                data: { roles },
+                headers: { Authorization: `Bearer ${token}` },
+            });
+
+            const responseData = response.data.data?.original || response.data;
+
+            if (!responseData.success) {
+                throw new Error(responseData.message || 'Failed to remove roles');
+            }
+
+            return responseData;
+        } catch (err) {
+            const error = err as AxiosError<ErrorResponse>;
+            if (error.response) {
+                return rejectWithValue({
+                    message: error.response.data?.message || 'Failed to remove roles',
+                    details: error.response.data?.details
+                });
+            }
+            return rejectWithValue({
+                message: (err as Error).message || 'Network error while removing roles'
+            });
+        }
+    }
+);
+
+// Change user role
+export const changeUserRole = createAsyncThunk<
+    {
+        success: boolean;
+        message: string;
+        data: {
+            user: User;
+            new_role: string;
+        };
+    },
+    { userId: string; newRole: string },
+    { rejectValue: ErrorResponse }
+>(
+    'users/changeUserRole',
+    async ({ userId, newRole }, { rejectWithValue, dispatch }) => {
+        try {
+            const token = Cookies.get('token');
+            const response = await api.patch(`/user/${userId}/userRole`, {
+                role: newRole
+            }, {
+                headers: { Authorization: `Bearer ${token}` },
+            });
+
+            const responseData = response.data.data?.original || response.data;
+
+            if (!responseData.success) {
+                throw new Error(responseData.message || 'Failed to change user role');
+            }
+
+            // Refresh user details to get updated roles
+            await dispatch(fetchSingleUser({ userId, relations: 'roles,permissions' }));
+
+            return responseData;
+        } catch (err) {
+            const error = err as AxiosError<ErrorResponse>;
+            if (error.response) {
+                return rejectWithValue({
+                    message: error.response.data?.message || 'Failed to change user role',
+                    details: error.response.data?.details
+                });
+            }
+            return rejectWithValue({
+                message: (err as Error).message || 'Network error while changing user role'
+            });
+        }
+    }
+);
 
 
 const userSlice = createSlice({

@@ -1,10 +1,11 @@
 "use client";
-import React, { useState } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import {
-    Mail, Calendar, User, Phone, MapPin, Shield, Clock, Check, X,
-    Key, Lock, Unlock, ChevronDown, ChevronUp, Edit3, Trash2, Copy,
-    KeyRound, Globe, ShieldCheck, BadgeCheck, Plus, Search, Eye, EyeOff,
-    Dot
+    Mail, Calendar, User, MapPin, Shield, Clock, Check, X, Edit3, Trash2, Copy,
+    KeyRound, Globe, ShieldCheck, Plus, Search, Eye, EyeOff,
+    Filter,
+    ChevronUp,
+    ChevronDown,
 } from 'lucide-react';
 import Model from '@/components/ui/modals/model';
 import Button from '@/components/ui/buttons/button';
@@ -14,10 +15,14 @@ import Badge from '@/components/ui/badge/badge';
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from '@/components/ui/collapsible';
 import RoleUserModel from './RoleUserModel';
 import PermissionUserModel from './PermissionUserModel';
+import { useSelector } from 'react-redux';
+import { RootState } from '@/store'
 
 interface Permission {
     id: string | number;
     name: string;
+    description?: string;
+    category?: string;
 }
 
 interface Role {
@@ -76,7 +81,11 @@ const ShowUserModel: React.FC<ShowUserModelProps> = ({
     const [activeTab, setActiveTab] = useState('overview');
     const [roleModalOpen, setRoleModalOpen] = useState(false);
     const [permissionModalOpen, setPermissionModalOpen] = useState(false);
+    const allRoles = useSelector((state: RootState) => state.role?.roles || []);
     const [selectedRole, setSelectedRole] = useState<Role | null>(null);
+    const [permissionSearch, setPermissionSearch] = useState('');
+    const [permissionFilter, setPermissionFilter] = useState('all');
+    const [showAllPermissions, setShowAllPermissions] = useState(false);
 
     const formatDate = (dateString: string) => {
         if (!dateString) return 'Never';
@@ -122,9 +131,9 @@ const ShowUserModel: React.FC<ShowUserModelProps> = ({
             active: "bg-green-500",
             inactive: "bg-red-500",
         };
-    
+
         const dotColor = statusMap[status.toLowerCase()] || statusMap.inactive;
-    
+
         return (
             <Badge className="bg-transparent shadow-none p-0">
                 <span className={`w-3 h-3 rounded-full ${dotColor}`} />
@@ -176,22 +185,92 @@ const ShowUserModel: React.FC<ShowUserModelProps> = ({
         setPermissionModalOpen(true);
     };
 
-    // Extract permissions from roles and direct permissions
-    const allPermissions = [
-        ...(user.roles?.flatMap(role =>
-            isRoleObject(role) ? (role.permissions || []) : []
-        ) || []),
-        ...(user.permissions || []),
-        ...permissions
-    ];
+    // Extract permissions from the backend response structure
+    const allPermissions = useMemo(() => {
+        // Check if permissions are passed as a prop (from the backend response)
+        if (permissions && permissions.length > 0) {
+            return permissions;
+        }
+
+        // Fallback: try to extract from user object if permissions prop is not available
+        const permissionsFromRoles = user.roles?.flatMap(role => {
+            if (isRoleObject(role) && role.permissions) {
+                return role.permissions;
+            }
+            return [];
+        }) || [];
+
+        const directPermissions = user.permissions || [];
+
+        // Combine all permissions and remove duplicates
+        return [...permissionsFromRoles, ...directPermissions];
+    }, [user.roles, user.permissions, permissions]);
 
     // Remove duplicate permissions
-    const uniquePermissions = Array.from(new Map(allPermissions.map(perm => [perm.id, perm])).values());
+    const uniquePermissions = Array.from(
+        new Map(allPermissions.map(perm => [perm.id, perm])).values()
+    );
+
+    // Get unique categories from permissions
+    const permissionCategories = useMemo(() => {
+        const categories = Array.from(new Set(uniquePermissions.map(p => p.category || 'Uncategorized')));
+        return ['all', ...categories];
+    }, [uniquePermissions]);
+
+    // Filter permissions based on search and filter
+    const filteredPermissions = useMemo(() => {
+        let result = uniquePermissions;
+
+        // Apply category filter
+        if (permissionFilter !== 'all') {
+            result = result.filter(p => p.category === permissionFilter);
+        }
+
+        // Apply search filter
+        if (permissionSearch) {
+            const term = permissionSearch.toLowerCase();
+            result = result.filter(p =>
+                p.name.toLowerCase().includes(term) ||
+                (p.description && p.description.toLowerCase().includes(term))
+            );
+        }
+
+        return result;
+    }, [uniquePermissions, permissionSearch, permissionFilter]);
+
+    // Group permissions by category
+    const permissionsByCategory = useMemo(() => {
+        const grouped: Record<string, Permission[]> = {};
+
+        filteredPermissions.forEach(permission => {
+            const category = permission.category || 'Uncategorized';
+            if (!grouped[category]) {
+                grouped[category] = [];
+            }
+            grouped[category].push(permission);
+        });
+
+        return grouped;
+    }, [filteredPermissions]);
+
+    // Determine how many permissions to show initially
+    const permissionsToShow = useMemo(() => {
+        if (showAllPermissions || filteredPermissions.length <= 15) {
+            return filteredPermissions;
+        }
+
+        return filteredPermissions.slice(0, 15);
+    }, [filteredPermissions, showAllPermissions]);
 
     // User avatar fallback with initials
     const getInitials = (name: string) => {
         return name.split(' ').map(word => word[0]).join('').toUpperCase();
     };
+
+    const clearPermissionFilters = useCallback(() => {
+        setPermissionSearch('');
+        setPermissionFilter('all');
+    }, []);
 
     return (
         <>
@@ -205,7 +284,7 @@ const ShowUserModel: React.FC<ShowUserModelProps> = ({
             >
                 <div className="h-full flex flex-col">
                     {/* Header */}
-                    <div className="relative bg-gradient-to-r rounded-t-xl from-violet-600 border-l  border-gray-200 to-indigo-700 text-white p-6">
+                    <div className="relative bg-gradient-to-r rounded-t-xl from-[#201335] border-l border-gray-200 to-[#ced3da] text-white p-6">
                         <div className="absolute top-4 right-4">
                             <button
                                 onClick={() => setIsModalOpen(false)}
@@ -299,7 +378,7 @@ const ShowUserModel: React.FC<ShowUserModelProps> = ({
                         {activeTab === 'overview' && (
                             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                                 {/* Personal Info Card */}
-                                <div className="bg-gray-50 rounded-xl p-5">
+                                <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm">
                                     <h2 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
                                         <User className="w-5 h-5 text-violet-600" />
                                         Personal Information
@@ -381,7 +460,7 @@ const ShowUserModel: React.FC<ShowUserModelProps> = ({
                                 </div>
 
                                 {/* Account Info Card */}
-                                <div className="bg-gray-50 rounded-xl p-5">
+                                <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm">
                                     <h2 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
                                         <ShieldCheck className="w-5 h-5 text-violet-600" />
                                         Account Information
@@ -459,7 +538,7 @@ const ShowUserModel: React.FC<ShowUserModelProps> = ({
                         {activeTab === 'permissions' && (
                             <div className="space-y-6">
                                 {/* Roles Section */}
-                                <div className="bg-white rounded-xl border border-gray-200 p-5">
+                                <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm">
                                     <div className="flex items-center justify-between mb-4">
                                         <h2 className="text-lg font-semibold text-gray-800 flex items-center gap-2">
                                             <Shield className="w-5 h-5 text-violet-600" />
@@ -469,7 +548,10 @@ const ShowUserModel: React.FC<ShowUserModelProps> = ({
                                             variant="primary"
                                             size="sm"
                                             className="bg-violet-600 hover:bg-violet-700 text-white"
-                                            onClick={() => setRoleModalOpen(true)}
+                                            onClick={() => {
+                                                setSelectedRole({ id: 'manage', name: 'Manage Roles' } as Role);
+                                                setRoleModalOpen(true);
+                                            }}
                                         >
                                             <Plus className="w-4 h-4 mr-1" />
                                             Manage Roles
@@ -488,30 +570,18 @@ const ShowUserModel: React.FC<ShowUserModelProps> = ({
                                                 return (
                                                     <Collapsible key={roleObj.id} className="bg-gray-50 rounded-lg border border-gray-200 overflow-hidden">
                                                         <CollapsibleTrigger
-                                                            className="flex items-center justify-between w-full p-3 hover:bg-gray-100 transition-colors"
-                                                            onClick={() => toggleRoleCollapse(roleObj.id.toString())}
+                                                            className="flex items-center justify-between w-full p-3 hover:bg-gray-100 transition-colors cursor-pointer"
                                                         >
                                                             <div className="flex items-center gap-2">
                                                                 <Shield className="w-4 h-4 text-gray-400" />
                                                                 <span className="font-medium">{roleObj.name}</span>
                                                             </div>
-                                                            <div className="flex items-center gap-2">
-                                                                <button
-                                                                    onClick={(e) => {
-                                                                        e.stopPropagation();
-                                                                        handleRoleEdit(roleObj);
-                                                                    }}
-                                                                    className="text-gray-400 hover:text-violet-600 p-1 rounded-md hover:bg-violet-50 transition-colors"
-                                                                    title="Edit role"
-                                                                >
-                                                                    <Edit3 className="w-3 h-3" />
-                                                                </button>
-                                                                {openRoles.includes(roleObj.id.toString()) ? (
-                                                                    <ChevronUp className="w-4 h-4 text-gray-400" />
-                                                                ) : (
-                                                                    <ChevronDown className="w-4 h-4 text-gray-400" />
-                                                                )}
-                                                            </div>
+                                                            {/* Add chevron icon to indicate collapsible */}
+                                                            {openRoles.includes(roleObj.id?.toString() || '') ? (
+                                                                <ChevronUp className="w-4 h-4 text-gray-400" />
+                                                            ) : (
+                                                                <ChevronDown className="w-4 h-4 text-gray-400" />
+                                                            )}
                                                         </CollapsibleTrigger>
 
                                                         <CollapsibleContent className="px-3 pb-3">
@@ -542,12 +612,12 @@ const ShowUserModel: React.FC<ShowUserModelProps> = ({
                                     </div>
                                 </div>
 
-                                {/* Permissions Section */}
-                                <div className="bg-white rounded-xl border border-gray-200 p-5">
+                                {/* Enhanced Permissions Section */}
+                                <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm">
                                     <div className="flex items-center justify-between mb-4">
                                         <h2 className="text-lg font-semibold text-gray-800 flex items-center gap-2">
                                             <KeyRound className="w-5 h-5 text-violet-600" />
-                                            Direct Permissions
+                                            Direct Permissions ({filteredPermissions.length})
                                         </h2>
                                         <Button
                                             variant="primary"
@@ -560,20 +630,137 @@ const ShowUserModel: React.FC<ShowUserModelProps> = ({
                                         </Button>
                                     </div>
 
-                                    <div className="bg-gray-50 rounded-lg border border-gray-200 p-4">
-                                        {uniquePermissions.length > 0 ? (
-                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                                {uniquePermissions.map(permission => (
-                                                    <div key={permission.id} className="flex items-center gap-2 p-2 bg-white rounded-md border border-gray-200">
-                                                        <div className="w-2 h-2 rounded-full bg-violet-500"></div>
-                                                        <span className="text-sm text-gray-700">{permission.name}</span>
-                                                    </div>
-                                                ))}
+                                    {/* Permission Search and Filters */}
+                                    <div className="mb-4 space-y-3">
+                                        <div className="relative">
+                                            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                                            <input
+                                                type="text"
+                                                placeholder="Search permissions..."
+                                                value={permissionSearch}
+                                                onChange={(e) => setPermissionSearch(e.target.value)}
+                                                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-violet-500 focus:border-transparent"
+                                            />
+                                            {permissionSearch && (
+                                                <button
+                                                    onClick={() => setPermissionSearch('')}
+                                                    className="absolute right-10 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                                                >
+                                                    <X className="w-4 h-4" />
+                                                </button>
+                                            )}
+                                        </div>
+
+                                        <div className="flex flex-wrap gap-2">
+                                            <div className="flex items-center gap-1 text-sm text-gray-600">
+                                                <Filter className="w-4 h-4" />
+                                                <span>Filter by:</span>
                                             </div>
-                                        ) : (
-                                            <p className="text-gray-500 text-center">No direct permissions assigned</p>
+                                            {permissionCategories.map(category => (
+                                                <button
+                                                    key={category}
+                                                    onClick={() => setPermissionFilter(category)}
+                                                    className={`px-3 py-1 rounded-full text-sm transition-colors ${permissionFilter === category
+                                                        ? 'bg-violet-100 text-violet-700 font-medium'
+                                                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                                                        }`}
+                                                >
+                                                    {category === 'all' ? 'All Categories' : category}
+                                                </button>
+                                            ))}
+                                        </div>
+
+                                        {(permissionSearch || permissionFilter !== 'all') && (
+                                            <div className="flex items-center gap-2 text-sm">
+                                                <span className="text-gray-600">
+                                                    Filtered: {filteredPermissions.length} of {uniquePermissions.length} permissions
+                                                </span>
+                                                <button
+                                                    onClick={clearPermissionFilters}
+                                                    className="text-violet-600 hover:text-violet-800 font-medium flex items-center gap-1"
+                                                >
+                                                    <X className="w-3 h-3" />
+                                                    Clear filters
+                                                </button>
+                                            </div>
                                         )}
                                     </div>
+
+                                    <div className="bg-gray-50 rounded-lg border border-gray-200 p-4">
+                                        {filteredPermissions.length > 0 ? (
+                                            <div>
+                                                {/* Grouped view for many permissions */}
+                                                {Object.keys(permissionsByCategory).length > 1 ? (
+                                                    <div className="space-y-4">
+                                                        {Object.entries(permissionsByCategory).map(([category, categoryPermissions]) => (
+                                                            <div key={category} className="bg-white rounded-lg p-3">
+                                                                <h3 className="font-medium text-gray-800 mb-2">
+                                                                    {category} <span className="text-gray-500">({categoryPermissions.length})</span>
+                                                                </h3>
+                                                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                                                    {categoryPermissions.map(permission => (
+                                                                        <div key={permission.id} className="flex items-center gap-2 p-2 bg-gray-50 rounded-md">
+                                                                            <div className="w-2 h-2 rounded-full bg-violet-500 flex-shrink-0"></div>
+                                                                            <div className="min-w-0">
+                                                                                <p className="text-sm font-medium text-gray-700 truncate">{permission.name}</p>
+                                                                                {permission.description && (
+                                                                                    <p className="text-xs text-gray-500 truncate">{permission.description}</p>
+                                                                                )}
+                                                                            </div>
+                                                                        </div>
+                                                                    ))}
+                                                                </div>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                ) : (
+                                                    // Grid view for fewer permissions
+                                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                                        {permissionsToShow.map(permission => (
+                                                            <div key={permission.id} className="flex items-center gap-2 p-2 bg-white rounded-md border border-gray-200">
+                                                                <div className="w-2 h-2 rounded-full bg-violet-500 flex-shrink-0"></div>
+                                                                <div className="min-w-0">
+                                                                    <p className="text-sm font-medium text-gray-700 truncate">{permission.name}</p>
+                                                                    {permission.description && (
+                                                                        <p className="text-xs text-gray-500 truncate">{permission.description}</p>
+                                                                    )}
+                                                                </div>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                )}
+
+                                                {/* Show more/less toggle */}
+                                                {filteredPermissions.length > 15 && (
+                                                    <div className="mt-4 text-center">
+                                                        <button
+                                                            onClick={() => setShowAllPermissions(!showAllPermissions)}
+                                                            className="text-violet-600 hover:text-violet-800 text-sm font-medium"
+                                                        >
+                                                            {showAllPermissions ? 'Show less' : `Show all ${filteredPermissions.length} permissions`}
+                                                        </button>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        ) : (
+                                            <p className="text-gray-500 text-center py-4">
+                                                {permissionSearch || permissionFilter !== 'all'
+                                                    ? 'No permissions match your filters'
+                                                    : 'No direct permissions assigned'
+                                                }
+                                            </p>
+                                        )}
+                                    </div>
+
+                                    {/* Summary of permissions */}
+                                    {filteredPermissions.length > 0 && (
+                                        <div className="mt-4 p-3 bg-violet-50 rounded-lg border border-violet-100">
+                                            <p className="text-sm text-violet-700">
+                                                <strong>Summary:</strong> This user has {filteredPermissions.length} permission{filteredPermissions.length !== 1 ? 's' : ''}{' '}
+                                                across {Object.keys(permissionsByCategory).length} categor{Object.keys(permissionsByCategory).length !== 1 ? 'ies' : 'y'}.
+                                            </p>
+                                        </div>
+                                    )}
                                 </div>
                             </div>
                         )}
@@ -672,10 +859,13 @@ const ShowUserModel: React.FC<ShowUserModelProps> = ({
             {selectedRole && (
                 <RoleUserModel
                     role={selectedRole}
+                    user={user}
                     isModalOpen={roleModalOpen}
                     setIsModalOpen={setRoleModalOpen}
                     allUsers={allUsers}
                     onSave={onRoleUpdate}
+                    isSaving={false}
+                    allRoles={allRoles} // Pass the roles from Redux store
                 />
             )}
 
