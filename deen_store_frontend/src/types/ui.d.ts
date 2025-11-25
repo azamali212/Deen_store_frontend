@@ -23,6 +23,44 @@ export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElemen
   size?: 'sm' | 'md' | 'lg';
 }
 
+export interface TemporaryPermission {
+  id: string | number;
+  permission_id: string | number;
+  permission_name: string;
+  user_id: string;
+  expires_at: string;
+  assigned_at: string;
+  reason?: string;
+  assigned_by: string;
+  assigned_by_name?: string;
+  is_active: boolean;
+  revoked_at?: string;
+  revoke_reason?: string;
+  days_remaining: number;
+}
+
+export interface TemporaryPermissionAssignment {
+  permissions: string[];
+  expires_at: string;
+  reason?: string;
+}
+
+export interface TemporaryPermissionsResponse {
+  success: boolean;
+  assigned_permissions?: TemporaryPermission[];
+  revoked_permissions?: TemporaryPermission[];
+  failed_permissions?: Array<{
+    permission: string;
+    error: string;
+  }>;
+  message: string;
+}
+
+export interface ActiveTemporaryPermissionsResponse {
+  success: boolean;
+  data: TemporaryPermission[];
+}
+
 //Card
 export interface CardProps {
   children?: React.ReactNode; //? this sign use only for optional or not a null same like that 
@@ -75,7 +113,7 @@ export interface TableProps {
   onSelectRow?: (id: number | string, isSelected: boolean) => void;
   onSelectAll?: (isSelected: boolean) => void;
   selectedRows?: Set<number>;
-  loading?: boolean; 
+  loading?: boolean;
   rowClassName?: string;
   headerClassName?: string;
   cellClassName?: string;
@@ -103,20 +141,20 @@ export interface TableRow {
   status: string;
   last_activity: string | null;
   user: {
-      name: string;
-      email: string;
-      created_at: string;
-      avatar: string;
+    name: string;
+    email: string;
+    created_at: string;
+    avatar: string;
   };
   contact: {
-      email: string;
-      verified: boolean;
+    email: string;
+    verified: boolean;
   };
   location: string;
   roles: any[];
   permissions: any[];
   actions: {
-      id: string;
+    id: string;
   };
 }
 
@@ -197,7 +235,7 @@ export interface SidebarItemProps {
 }
 
 export interface DropdownItem {
-  label?: React.ReactNode; 
+  label?: React.ReactNode;
   href?: string;
   icon?: React.ReactNode;
   onClick?: () => void;
@@ -307,6 +345,7 @@ export interface LoginPayload {
   email: string;
   password: string;
   guard?: string; // git
+  user_type?: 'admin' | 'customer'; // Added user_type to the payload
 }
 
 export interface LoginResponse {
@@ -358,6 +397,7 @@ export interface AuthState {
 //ForgetPassword
 export interface ForgotPasswordPayload {
   email: string;
+  user_type: 'admin' | 'customer';
 }
 
 export interface ResetPasswordPayload {
@@ -365,6 +405,7 @@ export interface ResetPasswordPayload {
   email: string;
   password: string;
   password_confirmation: string;
+  user_type: 'admin' | 'customer';
 }
 
 //Role Interface
@@ -540,9 +581,6 @@ export interface ExtendedPermission extends Permission {
 }
 
 
-
-
-
 interface ApiErrorResponse {
   message?: string;
   error?: string;
@@ -578,6 +616,7 @@ export interface UserStats {
   inactiveUsers: number;
   adminUsers: number;
   customerUsers: number;
+  
 }
 
 export interface User {
@@ -588,7 +627,7 @@ export interface User {
   roles?: Array<{ name: string }>;
   user_id?: string; // Alternative ID field
   user_name?: string; // Alternative name field
- 
+
 
   confirm_password?: string | null;
   stripe_id?: string | null;
@@ -636,7 +675,14 @@ export interface UserState {
   permissions?: Permission[];
   location?: string;
   deletedUsers: DeletedUsersState;
-  selectedUserPermissions: Permission[]; 
+  selectedUserPermissions: Permission[];
+
+  temporaryPermissions: {
+    active: TemporaryPermission[];
+    all: TemporaryPermission[];
+    loading: boolean;
+    error: string | null;
+  };
 }
 
 //Delete Interface 
@@ -693,5 +739,6 @@ export interface TableUser {
   actions: {
     id: string;
   };
+
 }
 

@@ -13,7 +13,12 @@ import {
   assignRolesToUser,
   removeRolesFromUser,
   changeUserRole,
-  syncUserRoles
+  assignTemporaryPermissions,
+  syncUserRoles,
+  revokeTemporaryPermissions,
+  getTemporaryPermissions,
+  cleanupExpiredTemporaryPermissions,
+  getActiveTemporaryPermissions
 } from "./userSlice";
 import { User, UserState, Permission } from "@/types/ui";
 import { initialState } from "./userSlice";
@@ -29,21 +34,35 @@ type UserReducers = {
   setSelectedUser: CaseReducer<UserState, PayloadAction<User | null>>;
   resetUserState: CaseReducer<UserState>;
   setSelectedUserPermissions: CaseReducer<UserState, PayloadAction<Permission[]>>;
+  clearTemporaryPermissionsError: CaseReducer<UserState>; // ADD THIS
+  clearTemporaryPermissions: CaseReducer<UserState>; // ADD THIS
 };
 
 export const reducers: UserReducers = {
   clearMessages(state) {
     state.error = null;
     state.successMessage = null;
+    state.error = null;
+    state.successMessage = null;
+    state.temporaryPermissions.error = null;
   },
   setSelectedUserPermissions: (state, action: PayloadAction<Permission[]>) => {
     state.selectedUserPermissions = action.payload;
   },
+
   setSelectedUser(state, action) {
     state.selectedUser = action.payload;
   },
   resetUserState() {
     return initialState;
+  },
+  clearTemporaryPermissionsError(state) {
+    state.temporaryPermissions.error = null;
+  },
+  clearTemporaryPermissions(state) {
+    state.temporaryPermissions.active = [];
+    state.temporaryPermissions.all = [];
+    state.temporaryPermissions.error = null;
   }
 };
 
@@ -368,5 +387,94 @@ export const extraReducers = (builder: ActionReducerMapBuilder<UserState>) => {
     .addCase(syncUserRoles.rejected, (state, action) => {
       state.loading = false;
       state.error = action.payload?.message || 'Failed to sync user roles';
+    })
+
+    // Add these cases to your existing extraReducers builder in userReducers.ts
+
+    // Temporary Permissions Cases
+    .addCase(assignTemporaryPermissions.pending, (state) => {
+      state.temporaryPermissions.loading = true;
+      state.temporaryPermissions.error = null;
+    })
+    .addCase(assignTemporaryPermissions.fulfilled, (state, action) => {
+      state.temporaryPermissions.loading = false;
+      state.successMessage = action.payload.message;
+
+      // Update active permissions list
+      if (action.payload.assigned_permissions) {
+        const newPermissions = action.payload.assigned_permissions.map(perm => ({
+          ...perm,
+          permission_name: perm.permission_name // Map permission to permission_name for consistency
+        }));
+        state.temporaryPermissions.active = [
+          ...state.temporaryPermissions.active,
+          ...newPermissions
+        ];
+      }
+    })
+    .addCase(assignTemporaryPermissions.rejected, (state, action) => {
+      state.temporaryPermissions.loading = false;
+      state.temporaryPermissions.error = action.payload?.message || 'Failed to assign temporary permissions';
+    })
+
+    .addCase(revokeTemporaryPermissions.pending, (state) => {
+      state.temporaryPermissions.loading = true;
+      state.temporaryPermissions.error = null;
+    })
+    .addCase(revokeTemporaryPermissions.fulfilled, (state, action) => {
+      state.temporaryPermissions.loading = false;
+      state.successMessage = action.payload.message;
+
+      // Remove revoked permissions from active list
+      if (action.payload.revoked_permissions) {
+        const revokedIds = action.payload.revoked_permissions.map(p => p.id);
+        state.temporaryPermissions.active = state.temporaryPermissions.active.filter(
+          perm => !revokedIds.includes(perm.id)
+        );
+      }
+    })
+    .addCase(revokeTemporaryPermissions.rejected, (state, action) => {
+      state.temporaryPermissions.loading = false;
+      state.temporaryPermissions.error = action.payload?.message || 'Failed to revoke temporary permissions';
+    })
+
+    .addCase(getTemporaryPermissions.pending, (state) => {
+      state.temporaryPermissions.loading = true;
+      state.temporaryPermissions.error = null;
+    })
+    .addCase(getTemporaryPermissions.fulfilled, (state, action) => {
+      state.temporaryPermissions.loading = false;
+      state.temporaryPermissions.active = action.payload.data.active_temporary_permissions || [];
+      state.temporaryPermissions.all = action.payload.data.all_temporary_permissions || [];
+    })
+    .addCase(getTemporaryPermissions.rejected, (state, action) => {
+      state.temporaryPermissions.loading = false;
+      state.temporaryPermissions.error = action.payload?.message || 'Failed to fetch temporary permissions';
+    })
+
+    .addCase(getActiveTemporaryPermissions.pending, (state) => {
+      state.temporaryPermissions.loading = true;
+      state.temporaryPermissions.error = null;
+    })
+    .addCase(getActiveTemporaryPermissions.fulfilled, (state, action) => {
+      state.temporaryPermissions.loading = false;
+      state.temporaryPermissions.active = action.payload.data || [];
+    })
+    .addCase(getActiveTemporaryPermissions.rejected, (state, action) => {
+      state.temporaryPermissions.loading = false;
+      state.temporaryPermissions.error = action.payload?.message || 'Failed to fetch active temporary permissions';
+    })
+
+    .addCase(cleanupExpiredTemporaryPermissions.pending, (state) => {
+      state.temporaryPermissions.loading = true;
+      state.temporaryPermissions.error = null;
+    })
+    .addCase(cleanupExpiredTemporaryPermissions.fulfilled, (state, action) => {
+      state.temporaryPermissions.loading = false;
+      state.successMessage = action.payload.message;
+    })
+    .addCase(cleanupExpiredTemporaryPermissions.rejected, (state, action) => {
+      state.temporaryPermissions.loading = false;
+      state.temporaryPermissions.error = action.payload?.message || 'Failed to cleanup expired permissions';
     });
 };

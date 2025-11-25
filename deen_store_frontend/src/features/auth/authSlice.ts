@@ -1,10 +1,9 @@
-// store/slices/authSlice.ts
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
 import { AxiosError } from 'axios';
 import api from '@/services/api';
 import { AuthState, LoginPayload, LoginResponse, ErrorResponse } from '../../types/ui';
 import Cookies from 'js-cookie';
-
+import { LocationData } from '@/hooks/location/useLocation';
 
 // Helper function to generate a unique tab ID
 const generateTabId = () => {
@@ -26,14 +25,6 @@ const getTabId = () => {
 
 const tabId = getTabId();
 
-const isAuthenticatedInThisTab = () => {
-  if (typeof window !== 'undefined') {
-    const tabId = sessionStorage.getItem('tabId');
-    return !!localStorage.getItem(`auth_token_${tabId}`);
-  }
-  return false;
-};
-
 const getTokenKey = () => `auth_token_${tabId}`;
 const getGuardKey = () => `auth_guard_${tabId}`;
 
@@ -48,31 +39,87 @@ const initialState: AuthState = {
   guard: typeof window !== 'undefined' ? localStorage.getItem(getGuardKey()) : null,
 };
 
-// Listen for storage events to sync auth state across tabs
+export interface EnhancedLoginPayload extends LoginPayload {
+  location_data?: LocationData;
+  user_type?: 'admin' | 'customer';
+}
 
-
-export const login = createAsyncThunk<LoginResponse, LoginPayload, { rejectValue: ErrorResponse }>(
+export const login = createAsyncThunk<LoginResponse, EnhancedLoginPayload, { rejectValue: ErrorResponse }>(
   'auth/login',
   async (userData, { rejectWithValue }) => {
     try {
+      console.log('Making login API call...', { user_type: userData.user_type });
       const response = await api.post('/user-login', userData);
-      const { token, guard, tab_session_id } = response.data;
+      const { token, guard, tab_session_id, location, user } = response.data;
+
+      console.log('Login response received:', { 
+        token: !!token, 
+        guard, 
+        user_type: userData.user_type 
+      });
 
       if (typeof window !== 'undefined') {
-        // Store token and guard with tab-specific keys
-        localStorage.setItem(getTokenKey(), token);
-        localStorage.setItem(getGuardKey(), guard);
+        // Generate or get tab ID
+        let tabId = sessionStorage.getItem('tabId');
+        if (!tabId) {
+          tabId = generateTabId();
+          sessionStorage.setItem('tabId', tabId);
+        }
+        
+        console.log('Using tab ID:', tabId);
 
-        // Also store in cookies for server-side access if needed
-        Cookies.set('token', token, {
+        // Store token and guard with tab-specific keys
+        const tokenKey = `auth_token_${tabId}`;
+        const guardKey = `auth_guard_${tabId}`;
+        
+        localStorage.setItem(tokenKey, token);
+        
+        // Use the user_type from login request or fallback to API response
+        const userGuard = userData.user_type || guard || 'customer';
+        localStorage.setItem(guardKey, userGuard);
+
+        console.log('Tokens stored - Token key:', tokenKey, 'Guard:', userGuard);
+
+        // Store location data
+        if (location) {
+          sessionStorage.setItem('login_location', JSON.stringify(location));
+        }
+
+        // CRITICAL: Set cookies for middleware access
+        // Set auth_token cookie
+        Cookies.set('auth_token', token, {
+          expires: 1, // 1 day
+          secure: process.env.NODE_ENV === 'production',
+          sameSite: 'lax',
+          path: '/',
+        });
+
+        // Set user_guard cookie
+        Cookies.set('user_guard', userGuard, {
           expires: 1,
           secure: process.env.NODE_ENV === 'production',
-          sameSite: 'strict',
+          sameSite: 'lax',
+          path: '/',
         });
+
+        // Set currentTabId cookie
+        Cookies.set('currentTabId', tabId, {
+          expires: 1,
+          secure: process.env.NODE_ENV === 'production',
+          sameSite: 'lax',
+          path: '/',
+        });
+
+        console.log('Cookies set successfully');
       }
 
-      return { ...response.data, tabId };
+      return { 
+        ...response.data, 
+        tabId,
+        guard: userData.user_type || guard // Use the user_type from login request
+      };
     } catch (err) {
+      console.error('Login API error:', err);
       const error = err as AxiosError<ErrorResponse>;
       return rejectWithValue(error.response?.data || { message: 'Login failed' });
     }
@@ -94,21 +141,41 @@ export const logout = createAsyncThunk<void, void, { rejectValue: ErrorResponse 
       }
 
       if (typeof window !== 'undefined') {
-        // Clear tab-specific storage
-        localStorage.removeItem(getTokenKey());
-        localStorage.removeItem(getGuardKey());
-        Cookies.remove('token');
-
-        // Also clear all other tab tokens if needed
+        // Clear auth-related storage only
+        const authKeys = [
+          'auth_token_',
+          'auth_guard_', 
+          'multiGuardAuth',
+          'token',
+          'user',
+          'loginAttempts',
+          'loginLock',
+          'current_user_type'
+        ];
+        
         Object.keys(localStorage).forEach(key => {
-          if (key.startsWith('auth_token_') || key.startsWith('auth_guard_')) {
+          if (authKeys.some(authKey => key.startsWith(authKey))) {
             localStorage.removeItem(key);
           }
+        });
+        
+        sessionStorage.clear();
+
+        // Clear auth cookies
+        const authCookies = ['auth_token', 'user_guard', 'currentTabId', 'token', 'PHPSESSID'];
+        authCookies.forEach(cookieName => {
+          Cookies.remove(cookieName);
+          document.cookie = `${cookieName}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;`;
         });
       }
 
       return;
     } catch (err: any) {
+      // Even if API call fails, clear local storage
+      if (typeof window !== 'undefined') {
+        localStorage.clear();
+        sessionStorage.clear();
+      }
       return rejectWithValue(err.response?.data?.message || 'Logout failed');
     }
   }

@@ -2,9 +2,9 @@
 // components/user/UserTable.tsx
 import Table from '@/components/ui/table/Table';
 import { useUser } from '@/hooks/user/useUser';
-import { Check, RefreshCw, X, Plus, Trash2, Edit, Table2, Grid, Eye, ChevronDown, Ellipsis, EyeIcon } from 'lucide-react';
+import { RefreshCw, X, Trash2, Edit, Table2, Grid, Ellipsis, EyeIcon, MapPin, Wifi, WifiOff } from 'lucide-react';
 import React, { useEffect, useState } from 'react';
-import { formatDate } from '@/lib/utils';
+import { formatDate, formatDistanceToNow } from '@/lib/utils';
 import Button from '@/components/ui/buttons/button';
 import { ArrowDownTrayIcon, ArrowUpTrayIcon } from '@heroicons/react/24/solid';
 import Tooltip from '@/components/ui/tooltip/Tooltip';
@@ -15,8 +15,6 @@ import { toast } from 'react-toastify';
 import UserCardView from './UserCardView';
 import ShowUserModel from '../model/ShowUserModel';
 import { CustomSwitch } from '@/components/ui/switchToggle/CustomSwitch';
-
-
 
 interface UserTableProps {
     onOpenRecycleBin?: () => void;
@@ -34,11 +32,14 @@ const UserTable: React.FC<UserTableProps> = ({ onOpenRecycleBin }) => {
     const [selectedUser, setSelectedUser] = useState<any>(null);
     const [isShowUserModalOpen, setIsShowUserModalOpen] = useState(false);
 
-    //Set status action and reason for user activation/deactivation
+    // Set status action and reason for user activation/deactivation
     const [statusAction, setStatusAction] = useState<'activate' | 'deactivate' | null>(null);
     const [reason, setReason] = useState('');
     const [processingUserId, setProcessingUserId] = useState<string | null>(null);
     const [isStatusDialogOpen, setIsStatusDialogOpen] = useState(false);
+
+    // Auto-refresh location data
+    const [autoRefresh, setAutoRefresh] = useState(true);
 
     // Handle status change confirmation
     const handleStatusChange = async () => {
@@ -47,7 +48,6 @@ const UserTable: React.FC<UserTableProps> = ({ onOpenRecycleBin }) => {
             return;
         }
 
-        // Check if we're using a temporary ID
         if (selectedUser.id.startsWith('temp-')) {
             toast.error('Cannot change status - invalid user ID');
             setIsStatusDialogOpen(false);
@@ -83,9 +83,7 @@ const UserTable: React.FC<UserTableProps> = ({ onOpenRecycleBin }) => {
         }
     };
 
-
-    //Handle Show User Model 
-
+    // Handle Show User Model 
     const handleShowUser = (user: any) => {
         setSelectedUser(user);
         setIsShowUserModalOpen(true);
@@ -146,6 +144,17 @@ const UserTable: React.FC<UserTableProps> = ({ onOpenRecycleBin }) => {
             toast.error(result.message);
         }
     };
+
+    // Auto-refresh users for live location updates
+    useEffect(() => {
+        if (autoRefresh) {
+            const interval = setInterval(() => {
+                loadUsers(currentPage, searchQuery);
+            }, 30000); // Refresh every 30 seconds
+
+            return () => clearInterval(interval);
+        }
+    }, [autoRefresh, currentPage, searchQuery, loadUsers]);
 
     const allUsers = [...users];
     const totalItems = allUsers.length;
@@ -223,9 +232,55 @@ const UserTable: React.FC<UserTableProps> = ({ onOpenRecycleBin }) => {
         console.log("Edit user", id);
     };
 
+    // Location renderer with live status
+    const renderLocation = (user: any) => {
+        const locationData = user.location_data;
+        
+        if (!locationData || !locationData.last_known_location) {
+            return (
+                <div className="flex items-center gap-2 text-gray-400">
+                    <MapPin className="w-3 h-3" />
+                    <span className="text-xs">No location data</span>
+                </div>
+            );
+        }
+
+        const isOnline = locationData.is_online;
+        const locationName = locationData.last_known_location;
+        const locationAge = locationData.location_age;
+        const isLive = locationAge?.includes('second') || locationAge?.includes('minute');
+
+        return (
+            <div className="flex flex-col gap-1">
+                <div className="flex items-center gap-2">
+                    {isOnline ? (
+                        <Wifi className="w-3 h-3 text-green-500" />
+                    ) : (
+                        <WifiOff className="w-3 h-3 text-gray-400" />
+                    )}
+                    <MapPin className="w-3 h-3 text-blue-500" />
+                    <span className="text-xs font-medium truncate max-w-[120px]" title={locationName}>
+                        {locationName}
+                    </span>
+                </div>
+                <div className="flex items-center gap-1 text-xs">
+                    <span className={`px-1 rounded ${
+                        isOnline 
+                            ? 'bg-green-100 text-green-800' 
+                            : 'bg-gray-100 text-gray-600'
+                    }`}>
+                        {isOnline ? 'Online' : 'Offline'}
+                    </span>
+                    <span className="text-gray-500" title={`Last updated: ${locationAge}`}>
+                        {isLive ? 'Live' : locationAge}
+                    </span>
+                </div>
+            </div>
+        );
+    };
+
     // Updated roles custom renderer with dropdown for multiple roles
     const renderRoles = (roles: any[]) => {
-        // Safeguard against undefined or empty roles array
         if (!roles || !Array.isArray(roles) || roles.length === 0) {
             return (
                 <span className="text-xs text-gray-400 italic">No roles assigned</span>
@@ -233,7 +288,6 @@ const UserTable: React.FC<UserTableProps> = ({ onOpenRecycleBin }) => {
         }
 
         const primaryRole = roles[0];
-        // Check if primaryRole exists and has a name property
         if (!primaryRole || !primaryRole.name) {
             return (
                 <span className="text-xs text-gray-400 italic">Invalid role data</span>
@@ -243,7 +297,6 @@ const UserTable: React.FC<UserTableProps> = ({ onOpenRecycleBin }) => {
 
         return (
             <div className="flex items-center gap-2">
-                {/* Primary Role Badge */}
                 <motion.div
                     whileHover={{ scale: 1.05 }}
                     whileTap={{ scale: 0.95 }}
@@ -266,7 +319,6 @@ const UserTable: React.FC<UserTableProps> = ({ onOpenRecycleBin }) => {
 
     const customRenderers = {
         status: (value: string, row: any) => {
-            // First, verify we have valid data
             if (!row) {
                 console.error('Row data is undefined', { value, row });
                 return (
@@ -277,11 +329,7 @@ const UserTable: React.FC<UserTableProps> = ({ onOpenRecycleBin }) => {
             }
 
             const isActive = value === 'active';
-
-            // Get the user ID - handle both direct ID and nested user object
-            const userId = row.id
-                ? row.id.replace('user-row-', '')
-                : row.user?.id;
+            const userId = row.id ? row.id.replace('user-row-', '') : row.user?.id;
 
             if (!userId) {
                 console.error('Could not extract user ID from:', row);
@@ -320,6 +368,10 @@ const UserTable: React.FC<UserTableProps> = ({ onOpenRecycleBin }) => {
                 {value ? formatDate(value) : 'Never logged in'}
             </span>
         ),
+        location: (value: any, row: any) => {
+            const user = users.find(u => u.id === row.id?.replace('user-row-', ''));
+            return renderLocation(user);
+        },
     };
 
     const headers = [
@@ -376,7 +428,7 @@ const UserTable: React.FC<UserTableProps> = ({ onOpenRecycleBin }) => {
         roles: user.roles,
         last_login: user.last_login_at,
         created_at: user.created_at,
-        location: user.location,
+        location: user.location_data, // This will use the custom renderer
         actions: (
             <div className="flex gap-2">
                 <div className="relative">
@@ -388,13 +440,11 @@ const UserTable: React.FC<UserTableProps> = ({ onOpenRecycleBin }) => {
                             e.stopPropagation();
                             const dropdown = document.getElementById(`user-actions-${user.id}`);
                             const isHidden = dropdown?.classList.contains('hidden');
-                            // Close all other dropdowns first
                             document.querySelectorAll('.user-actions-dropdown').forEach(el => {
                                 if (el.id !== `user-actions-${user.id}`) {
                                     el.classList.add('hidden');
                                 }
                             });
-                            // Toggle current dropdown
                             if (dropdown) {
                                 dropdown.classList.toggle('hidden', !isHidden);
                             }
@@ -493,18 +543,17 @@ const UserTable: React.FC<UserTableProps> = ({ onOpenRecycleBin }) => {
                         user_name: selectedUser.name,
                         email: selectedUser.email,
                         phone: selectedUser.phone,
-                        location: selectedUser.location,
+                        location: selectedUser.location_data?.last_known_location || selectedUser.location,
                         avatar: selectedUser.avatar,
                         bio: selectedUser.bio,
                         address: selectedUser.address,
-                        roles: selectedUser.roles?.map((r: any) => r.name) || [],
                         status: selectedUser.status,
                         created_at: selectedUser.created_at,
                         updated_at: selectedUser.updated_at,
                         last_login_at: selectedUser.last_login_at,
-                        roles: selectedUser.roles || [], // Pass full roles array with permissions
-                        permissions: selectedUser.permissions || [] // Pass direct permissions
-
+                        roles: selectedUser.roles || [],
+                        permissions: selectedUser.permissions || [],
+                        location_data: selectedUser.location_data // Pass full location data
                     }}
                     isModalOpen={isShowUserModalOpen}
                     setIsModalOpen={setIsShowUserModalOpen}
@@ -547,7 +596,19 @@ const UserTable: React.FC<UserTableProps> = ({ onOpenRecycleBin }) => {
                         )}
                     </div>
                     <div className="flex items-center gap-2">
-                        <Tooltip content="Refresh">
+                        {/* Auto-refresh toggle */}
+                        <Tooltip content={autoRefresh ? "Auto-refresh ON" : "Auto-refresh OFF"}>
+                            <Button
+                                variant="ghost"
+                                size="sm"
+                                className={`${autoRefresh ? 'text-green-500' : 'text-gray-500'} hover:text-green-600`}
+                                onClick={() => setAutoRefresh(!autoRefresh)}
+                            >
+                                <RefreshCw className={`w-4 h-4 ${autoRefresh ? 'animate-spin' : ''}`} />
+                            </Button>
+                        </Tooltip>
+                        
+                        <Tooltip content="Manual refresh">
                             <Button
                                 variant="ghost"
                                 size="sm"
@@ -611,7 +672,8 @@ const UserTable: React.FC<UserTableProps> = ({ onOpenRecycleBin }) => {
                             ...user,
                             email_verified_at: user.email_verified_at || undefined,
                             last_login_at: user.last_login_at || undefined,
-                            location: user.location || undefined
+                            location: user.location_data?.last_known_location || user.location || undefined,
+                            location_data: user.location_data // Pass location data for card view
                         }))}
                         onEdit={handleEditUser}
                         onDelete={handleDeleteUser}

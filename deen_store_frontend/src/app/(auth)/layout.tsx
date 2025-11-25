@@ -1,17 +1,15 @@
+// app/auth/layout.tsx
 'use client'
 import { AuthLayoutProps } from '@/types/ui';
-import { usePathname } from 'next/navigation';
+import { useSearchParams } from 'next/navigation';
 
 export default function AuthLayout({ children }: AuthLayoutProps) {
-  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const portal = searchParams.get('portal');
 
-  console.log("Current pathname:", pathname);
+  const isAdminPortal = portal === 'admin';
 
-  const isShopinintyAdmin = pathname.includes("shopinity_admin_login");
-
-  console.log("Is admin login page?", isShopinintyAdmin);
-
-  const backgroundImage = isShopinintyAdmin
+  const backgroundImage = isAdminPortal
     ? "url('/logo/alldone.jpeg')"
     : "url('/dashboard_logo/background.jpeg')";
 
@@ -23,8 +21,8 @@ export default function AuthLayout({ children }: AuthLayoutProps) {
         backgroundSize: "cover",
         backgroundPosition: "center",
         backgroundRepeat: "no-repeat",
-        height: "100vh", // Added to guarantee full height
-        width: "100vw",  // Added for full width
+        height: "100vh",
+        width: "100vw",
       }}
     >
       <main className="text-gray-500">{children}</main>

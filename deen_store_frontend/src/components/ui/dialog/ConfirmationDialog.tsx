@@ -20,6 +20,7 @@ interface ConfirmationDialogProps {
     disabled?: boolean;
   }>;
   children?: React.ReactNode;
+  disableConfirm?: boolean;
 }
 
 const ConfirmationDialog: React.FC<ConfirmationDialogProps> = ({

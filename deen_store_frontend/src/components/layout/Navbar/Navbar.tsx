@@ -127,19 +127,55 @@ const Navbar = ({
     setTheme(prev => (prev === 'dark' ? 'light' : 'dark'));
   };
 
+  // components/layout/Navbar.tsx (updated logout function)
+  // components/layout/Navbar.tsx - Updated logout function
   const handleLogout = async () => {
-    await dispatch(logout());
-    // Clear any remaining localStorage items
-    localStorage.removeItem('multiGuardAuth');
-    localStorage.removeItem('token');
-    // Set a logout event for other tabs
-    localStorage.setItem('logout-event', Date.now().toString());
-    localStorage.removeItem('logout-event');
-    Cookies.remove('token');
-    Cookies.remove('PHPSESSID');
-    localStorage.removeItem('multiGuardAuth');
-    // Redirect
-    window.location.href = '/shopinity_admin_login';
+    try {
+      // Clear ALL localStorage items systematically
+      localStorage.clear();
+
+      // Clear ALL sessionStorage items
+      sessionStorage.clear();
+
+      // Clear ALL cookies
+      const cookies = document.cookie.split(';');
+      for (let i = 0; i < cookies.length; i++) {
+        const cookie = cookies[i];
+        const eqPos = cookie.indexOf('=');
+        const name = eqPos > -1 ? cookie.substr(0, eqPos).trim() : cookie.trim();
+
+        // Clear all cookies regardless of name
+        document.cookie = `${name}=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/;domain=${window.location.hostname}`;
+        document.cookie = `${name}=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/`;
+      }
+
+      // Clear service worker cache if exists
+      if ('caches' in window) {
+        const cacheNames = await caches.keys();
+        await Promise.all(
+          cacheNames.map(cacheName => caches.delete(cacheName))
+        );
+      }
+
+      // Clear browser history and prevent back navigation
+      window.history.replaceState(null, '', '/login');
+
+      // Dispatch logout action
+      await dispatch(logout());
+
+      // Force hard redirect with cache busting
+      setTimeout(() => {
+        // Add cache busting parameter
+        const timestamp = new Date().getTime();
+        window.location.href = `/login?portal=admin&_=${timestamp}`;
+      }, 100);
+
+    } catch (error) {
+      console.error('Logout error:', error);
+      // Fallback: force redirect with cache busting
+      const timestamp = new Date().getTime();
+      window.location.href = `/login?portal=admin&_=${timestamp}`;
+    }
   };
 
   const handleToggle = () => {

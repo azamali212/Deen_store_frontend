@@ -1,5 +1,5 @@
 import api from "@/services/api";
-import { ErrorResponse, User, UserState, Permission } from "@/types/ui";
+import { ErrorResponse, User, UserState, Permission, TemporaryPermissionsResponse, TemporaryPermissionAssignment, TemporaryPermission, ActiveTemporaryPermissionsResponse } from "@/types/ui";
 import { createAsyncThunk, createSlice, PayloadAction } from "@reduxjs/toolkit";
 import { AxiosError } from "axios";
 import Cookies from 'js-cookie';
@@ -28,6 +28,12 @@ export const initialState: UserState = {
     },
     deletedUsers: {
         data: [],
+        loading: false,
+        error: null
+    },
+    temporaryPermissions: {
+        active: [],
+        all: [],
         loading: false,
         error: null
     }
@@ -792,6 +798,224 @@ export const changeUserRole = createAsyncThunk<
     }
 );
 
+//Permission Settings for User
+export const assignTemporaryPermissions = createAsyncThunk<
+  TemporaryPermissionsResponse,
+  {
+    userId: string;
+    permissions: TemporaryPermissionAssignment[];
+    reason?: string;
+  },
+  { rejectValue: ErrorResponse }
+>(
+  'users/assignTemporaryPermissions',
+  async ({ userId, permissions, reason }, { rejectWithValue }) => {
+    try {
+      const token = Cookies.get('token');
+      
+      // FIX: The component now sends the correct structure
+      // Just use the first permission object (they should all be the same)
+      const permissionNames = permissions[0]?.permissions || [];
+      
+      //console.log('🔍 DEBUG - In Redux slice - permissionNames:', permissionNames);
+      //console.log('🔍 DEBUG - In Redux slice - type of first element:', typeof permissionNames[0]);
+      //console.log('🔍 DEBUG - In Redux slice - first element:', permissionNames[0]);
+      
+      const payload = {
+        permissions: permissionNames, // Array of permission names
+        expires_at: permissions[0]?.expires_at,
+        reason: reason || permissions[0]?.reason || 'Temporary access'
+      };
+
+      console.log('🔍 DEBUG - Final payload to backend:', payload);
+
+      const response = await api.post(`/users/${userId}/temporary-permissions`, payload, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      const responseData = response.data.data?.original || response.data;
+
+      if (!responseData.success) {
+        throw new Error(responseData.message || 'Failed to assign temporary permissions');
+      }
+
+      return responseData;
+    } catch (err) {
+      const error = err as AxiosError<ErrorResponse>;
+      if (error.response) {
+        return rejectWithValue({
+          message: error.response.data?.message || 'Failed to assign temporary permissions',
+          details: error.response.data?.details
+        });
+      }
+      return rejectWithValue({
+        message: (err as Error).message || 'Network error while assigning temporary permissions'
+      });
+    }
+  }
+);
+
+// Revoke temporary permissions
+export const revokeTemporaryPermissions = createAsyncThunk<
+    TemporaryPermissionsResponse,
+    {
+        userId: string;
+        permissions: string[];
+        reason?: string;
+    },
+    { rejectValue: ErrorResponse }
+>(
+    'users/revokeTemporaryPermissions',
+    async ({ userId, permissions, reason }, { rejectWithValue }) => {
+        try {
+            const token = Cookies.get('token');
+            const response = await api.post(`/users/${userId}/revoke-permissions`, {
+                permissions,
+                reason
+            }, {
+                headers: { Authorization: `Bearer ${token}` },
+            });
+
+            const responseData = response.data.data?.original || response.data;
+
+            if (!responseData.success) {
+                throw new Error(responseData.message || 'Failed to revoke temporary permissions');
+            }
+
+            return responseData;
+        } catch (err) {
+            const error = err as AxiosError<ErrorResponse>;
+            if (error.response) {
+                return rejectWithValue({
+                    message: error.response.data?.message || 'Failed to revoke temporary permissions',
+                    details: error.response.data?.details
+                });
+            }
+            return rejectWithValue({
+                message: (err as Error).message || 'Network error while revoking temporary permissions'
+            });
+        }
+    }
+);
+
+// Get user's temporary permissions
+export const getTemporaryPermissions = createAsyncThunk<
+    {
+        success: boolean;
+        data: {
+            active_temporary_permissions: TemporaryPermission[];
+            all_temporary_permissions: TemporaryPermission[];
+        };
+    },
+    string, // userId
+    { rejectValue: ErrorResponse }
+>(
+    'users/getTemporaryPermissions',
+    async (userId, { rejectWithValue }) => {
+        try {
+            const token = Cookies.get('token');
+            const response = await api.get(`/users/${userId}/get-temporary-permissions`, {
+                headers: { Authorization: `Bearer ${token}` },
+            });
+
+            const responseData = response.data.data?.original || response.data;
+
+            if (!responseData.success) {
+                throw new Error(responseData.message || 'Failed to fetch temporary permissions');
+            }
+
+            return responseData;
+        } catch (err) {
+            const error = err as AxiosError<ErrorResponse>;
+            if (error.response) {
+                return rejectWithValue({
+                    message: error.response.data?.message || 'Failed to fetch temporary permissions',
+                    details: error.response.data?.details
+                });
+            }
+            return rejectWithValue({
+                message: (err as Error).message || 'Network error while fetching temporary permissions'
+            });
+        }
+    }
+);
+
+// Get active temporary permissions only
+export const getActiveTemporaryPermissions = createAsyncThunk<
+    ActiveTemporaryPermissionsResponse,
+    string, // userId
+    { rejectValue: ErrorResponse }
+>(
+    'users/getActiveTemporaryPermissions',
+    async (userId, { rejectWithValue }) => {
+        try {
+            const token = Cookies.get('token');
+            const response = await api.get(`/users/${userId}/get-active-temporaryPermission`, {
+                headers: { Authorization: `Bearer ${token}` },
+            });
+
+            const responseData = response.data.data?.original || response.data;
+
+            if (!responseData.success) {
+                throw new Error(responseData.message || 'Failed to fetch active temporary permissions');
+            }
+
+            return responseData;
+        } catch (err) {
+            const error = err as AxiosError<ErrorResponse>;
+            if (error.response) {
+                return rejectWithValue({
+                    message: error.response.data?.message || 'Failed to fetch active temporary permissions',
+                    details: error.response.data?.details
+                });
+            }
+            return rejectWithValue({
+                message: (err as Error).message || 'Network error while fetching active temporary permissions'
+            });
+        }
+    }
+);
+
+// Clean up expired temporary permissions
+export const cleanupExpiredTemporaryPermissions = createAsyncThunk<
+    {
+        success: boolean;
+        message: string;
+        cleaned_count?: number;
+    },
+    void,
+    { rejectValue: ErrorResponse }
+>(
+    'users/cleanupExpiredTemporaryPermissions',
+    async (_, { rejectWithValue }) => {
+        try {
+            const token = Cookies.get('token');
+            const response = await api.get('/users/cleaenup-temporary-permissions', {
+                headers: { Authorization: `Bearer ${token}` },
+            });
+
+            const responseData = response.data.data?.original || response.data;
+
+            if (!responseData.success) {
+                throw new Error(responseData.message || 'Failed to cleanup expired permissions');
+            }
+
+            return responseData;
+        } catch (err) {
+            const error = err as AxiosError<ErrorResponse>;
+            if (error.response) {
+                return rejectWithValue({
+                    message: error.response.data?.message || 'Failed to cleanup expired permissions',
+                    details: error.response.data?.details
+                });
+            }
+            return rejectWithValue({
+                message: (err as Error).message || 'Network error while cleaning up expired permissions'
+            });
+        }
+    }
+);
+
 
 const userSlice = createSlice({
     name: 'users',
@@ -803,5 +1027,6 @@ const userSlice = createSlice({
 });
 
 
-export const { clearMessages, setSelectedUser, resetUserState, setSelectedUserPermissions } = userSlice.actions;
+export const { clearMessages, setSelectedUser, resetUserState, setSelectedUserPermissions, clearTemporaryPermissionsError,
+    clearTemporaryPermissions } = userSlice.actions;
 export default userSlice.reducer;
