@@ -1,3 +1,4 @@
+'use client';
 import React, { useMemo } from 'react';
 import { ChartData, ChartOptions } from 'chart.js';
 import Chart from '@/components/Chart/Chart';

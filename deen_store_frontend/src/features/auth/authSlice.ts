@@ -1,278 +1,343 @@
-import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
-import { AxiosError } from 'axios';
-import api from '@/services/api';
-import { AuthState, LoginPayload, LoginResponse, ErrorResponse } from '../../types/ui';
-import Cookies from 'js-cookie';
-import { LocationData } from '@/hooks/location/useLocation';
+// features/auth/authSlice.ts
+import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
+import { AuthStorage } from "@/core/auth/auth.storage";
+import { AuthTab } from "@/core/auth/auth.tab";
+import { publicApi } from "@/services/api.public";
 
-// Helper function to generate a unique tab ID
-const generateTabId = () => {
-  return Math.random().toString(36).substring(2) + Date.now().toString(36);
-};
+const key = (portal: string) => `${portal}:${AuthTab.getId()}`;
 
-// Get tab ID from session storage or generate a new one
-const getTabId = () => {
-  if (typeof window !== 'undefined') {
-    let tabId = sessionStorage.getItem('tabId');
-    if (!tabId) {
-      tabId = generateTabId();
-      sessionStorage.setItem('tabId', tabId);
-    }
-    return tabId;
-  }
-  return 'default-tab';
-};
-
-const tabId = getTabId();
-
-const getTokenKey = () => `auth_token_${tabId}`;
-const getGuardKey = () => `auth_guard_${tabId}`;
-
-const initialState: AuthState = {
-  user: null,
-  token: typeof window !== 'undefined' ? localStorage.getItem(getTokenKey()) : null,
-  loading: false,
-  error: null,
-  successMessage: null,
-  isAuthenticated: false,
-  tabId,
-  guard: typeof window !== 'undefined' ? localStorage.getItem(getGuardKey()) : null,
-};
-
-export interface EnhancedLoginPayload extends LoginPayload {
-  location_data?: LocationData;
-  user_type?: 'admin' | 'customer';
-}
-
-export const login = createAsyncThunk<LoginResponse, EnhancedLoginPayload, { rejectValue: ErrorResponse }>(
-  'auth/login',
-  async (userData, { rejectWithValue }) => {
+// --------------------
+// LOGOUT THUNK - NEW!
+// --------------------
+export const logout = createAsyncThunk(
+  "auth/logout",
+  async (portal: "admin" | "customer", { rejectWithValue }) => {
     try {
-      console.log('Making login API call...', { user_type: userData.user_type });
-      const response = await api.post('/user-login', userData);
-      const { token, guard, tab_session_id, location, user } = response.data;
-
-      console.log('Login response received:', { 
-        token: !!token, 
-        guard, 
-        user_type: userData.user_type 
-      });
-
-      if (typeof window !== 'undefined') {
-        // Generate or get tab ID
-        let tabId = sessionStorage.getItem('tabId');
-        if (!tabId) {
-          tabId = generateTabId();
-          sessionStorage.setItem('tabId', tabId);
+      // Get token for API call
+      const token = AuthStorage.getAccessToken(portal);
+      
+      if (token) {
+        try {
+          // Call backend logout API
+          await publicApi.post("/user-logout", {}, {
+            headers: {
+              Authorization: `Bearer ${token}`
+            }
+          });
+        } catch (apiError) {
+          console.log("Backend logout API error (might be expected if token expired):", apiError);
+          // Continue with frontend logout even if backend fails
         }
-        
-        console.log('Using tab ID:', tabId);
-
-        // Store token and guard with tab-specific keys
-        const tokenKey = `auth_token_${tabId}`;
-        const guardKey = `auth_guard_${tabId}`;
-        
-        localStorage.setItem(tokenKey, token);
-        
-        // Use the user_type from login request or fallback to API response
-        const userGuard = userData.user_type || guard || 'customer';
-        localStorage.setItem(guardKey, userGuard);
-
-        console.log('Tokens stored - Token key:', tokenKey, 'Guard:', userGuard);
-
-        // Store location data
-        if (location) {
-          sessionStorage.setItem('login_location', JSON.stringify(location));
-        }
-
-        // CRITICAL: Set cookies for middleware access
-        // Set auth_token cookie
-        Cookies.set('auth_token', token, {
-          expires: 1, // 1 day
-          secure: process.env.NODE_ENV === 'production',
-          sameSite: 'lax',
-          path: '/',
-        });
-
-        // Set user_guard cookie
-        Cookies.set('user_guard', userGuard, {
-          expires: 1,
-          secure: process.env.NODE_ENV === 'production',
-          sameSite: 'lax',
-          path: '/',
-        });
-
-        // Set currentTabId cookie
-        Cookies.set('currentTabId', tabId, {
-          expires: 1,
-          secure: process.env.NODE_ENV === 'production',
-          sameSite: 'lax',
-          path: '/',
-        });
-
-        console.log('Cookies set successfully');
       }
+      
+      // Clear frontend storage
+      AuthStorage.clear(portal);
+      
+      return { portal };
+    } catch (e: any) {
+      console.error("Logout error:", e);
+      // Still clear frontend storage even if something fails
+      AuthStorage.clear(portal);
+      return rejectWithValue("Logout failed");
+    }
+  }
+);
+
+// --------------------
+// LOGIN THUNK
+// --------------------
+export const login = createAsyncThunk(
+  "auth/login",
+  async (
+    payload: { email: string; password: string; portal: "admin" | "customer" },
+    { rejectWithValue }
+  ) => {
+    try {
+      console.log("Sending login request:", payload);
+
+      const { data } = await publicApi.post("/user-login", {
+        email: payload.email,
+        password: payload.password,
+        portal: payload.portal,
+      });
+      
+      console.log("Login response data:", data);
+      
+      return { 
+        data, 
+        portal: payload.portal, 
+        email: payload.email,
+         redirectTo: payload.portal === "admin" ? "/dashboard" : "/userInterface"
+      };
+    } catch (e: any) {
+      console.error("Login error:", e.response?.data || e.message);
+      return rejectWithValue(e.response?.data?.message || "Login failed");
+    }
+  }
+);
+
+// --------------------
+// VERIFY OTP THUNK
+// --------------------
+export const verifyOtp = createAsyncThunk(
+  "auth/verifyOtp",
+  async (
+    payload: {
+      portal: "admin" | "customer";
+      email: string;
+      session_id: string;
+      otp: string;
+    },
+    { rejectWithValue }
+  ) => {
+    try {
+      console.log("🔵 Sending OTP verification:", payload);
+
+      const { data } = await publicApi.post("/verify-otp", payload);
+
+      console.log("✅ OTP verified successfully:", data);
 
       return { 
-        ...response.data, 
-        tabId,
-        guard: userData.user_type || guard // Use the user_type from login request
+        data, 
+        portal: payload.portal,
+        redirectTo: payload.portal === "admin" ? "/dashboard" : "/userInterface"
       };
-    } catch (err) {
-      console.error('Login API error:', err);
-      const error = err as AxiosError<ErrorResponse>;
-      return rejectWithValue(error.response?.data || { message: 'Login failed' });
+    } catch (e: any) {
+      console.error("❌ OTP verification failed:", e);
+      return rejectWithValue(e.response?.data?.message || "OTP failed");
     }
   }
 );
 
-export const logout = createAsyncThunk<void, void, { rejectValue: ErrorResponse }>(
-  'auth/logout',
-  async (_, { rejectWithValue }) => {
+// --------------------
+// CHECK SESSION THUNK
+// --------------------
+// features/auth/authSlice.ts - Update checkSession thunk
+export const checkSession = createAsyncThunk(
+  "auth/checkSession",
+  async (portal: "admin" | "customer", { rejectWithValue, dispatch }) => {
     try {
-      const token = typeof window !== 'undefined' ? localStorage.getItem(getTokenKey()) : null;
-
-      if (token) {
-        await api.post('/user-logout', null, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        });
+      console.log(`🔍 Checking session for portal: ${portal}`);
+      
+      // Get token from all possible sources
+      const token = AuthStorage.getAccessToken(portal);
+      const cookieToken = AuthStorage.getTokenFromCookie(portal);
+      
+      console.log(`Token from storage: ${!!token}, from cookie: ${!!cookieToken}`);
+      
+      if (!token && !cookieToken) {
+        console.log(`❌ No token found for ${portal}`);
+        throw new Error("No token found");
       }
-
-      if (typeof window !== 'undefined') {
-        // Clear auth-related storage only
-        const authKeys = [
-          'auth_token_',
-          'auth_guard_', 
-          'multiGuardAuth',
-          'token',
-          'user',
-          'loginAttempts',
-          'loginLock',
-          'current_user_type'
-        ];
-        
-        Object.keys(localStorage).forEach(key => {
-          if (authKeys.some(authKey => key.startsWith(authKey))) {
-            localStorage.removeItem(key);
+      
+      // Use whichever token is available
+      const validToken = token || cookieToken;
+      
+      // Optional: Validate token with backend API
+      try {
+        // Uncomment this if you want to validate token with backend
+        /*
+        const { data } = await publicApi.get("/validate-token", {
+          headers: {
+            Authorization: `Bearer ${validToken}`
           }
         });
+        console.log(`✅ Token validated for ${portal}:`, data);
+        return { portal, token: validToken, user: data.user };
+        */
         
-        sessionStorage.clear();
-
-        // Clear auth cookies
-        const authCookies = ['auth_token', 'user_guard', 'currentTabId', 'token', 'PHPSESSID'];
-        authCookies.forEach(cookieName => {
-          Cookies.remove(cookieName);
-          document.cookie = `${cookieName}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;`;
-        });
+        // For now, just return the token
+        console.log(`✅ Session valid for ${portal}`);
+        return { portal, token: validToken };
+      } catch (apiError) {
+        console.log(`⚠️ Token validation failed for ${portal}:`, apiError);
+        // Even if API validation fails, if we have a token, consider session valid
+        // Or you can clear the token here if it's invalid
+        // AuthStorage.clear(portal);
+        // throw new Error("Token invalid");
+        return { portal, token: validToken };
       }
-
-      return;
-    } catch (err: any) {
-      // Even if API call fails, clear local storage
-      if (typeof window !== 'undefined') {
-        localStorage.clear();
-        sessionStorage.clear();
-      }
-      return rejectWithValue(err.response?.data?.message || 'Logout failed');
+      
+    } catch (e: any) {
+      console.error(`❌ Session check failed for ${portal}:`, e.message);
+      
+      // Clear invalid tokens
+      AuthStorage.clear(portal);
+      
+      return rejectWithValue("Session expired or invalid");
     }
   }
 );
 
-export const loadUser = createAsyncThunk<LoginResponse, void, { rejectValue: ErrorResponse }>(
-  'auth/loadUser',
-  async (_, { rejectWithValue }) => {
-    try {
-      const token = typeof window !== 'undefined' ? localStorage.getItem(getTokenKey()) : null;
-      if (!token) throw new Error('No token found');
-
-      const response = await api.get<LoginResponse>('/me', {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-
-      return { ...response.data, token, tabId };
-    } catch (err) {
-      const error = err as AxiosError<ErrorResponse>;
-      return rejectWithValue(error.response?.data || { message: 'Session expired or unauthorized' });
-    }
-  }
-);
-
-const authSlice = createSlice({
-  name: 'auth',
-  initialState,
+// --------------------
+// SLICE
+// --------------------
+const slice = createSlice({
+  name: "auth",
+  initialState: { 
+    sessions: {} as Record<string, any>,
+    loading: false,
+    error: null as string | null,
+    logoutLoading: false, // Add logout loading state
+  },
   reducers: {
-    resetAuthState(state) {
+    // Keep this for immediate logout without API call if needed
+    forceLogout(state, action) {
+      const portal = action.payload as "admin" | "customer";
+      const sessionKey = key(portal);
+      
+      AuthStorage.clear(portal);
+      delete state.sessions[sessionKey];
       state.error = null;
-      state.successMessage = null;
-    },
-    initializeAuth(state) {
-      if (typeof window !== 'undefined') {
-        const currentTabId = sessionStorage.getItem('tabId') || getTabId();
-        const token = localStorage.getItem(`auth_token_${currentTabId}`);
-
-        // Only set as authenticated if THIS tab has a token
-        state.token = token;
-        state.isAuthenticated = !!token;
-        state.tabId = currentTabId;
-
-        // If no token for this tab, clear any potential state
-        if (!token) {
-          state.user = null;
-          state.guard = null;
-        }
+      
+      // Redirect to login page
+      if (typeof window !== "undefined") {
+        window.location.href = portal === "admin" ? "/admin/login" : "/customer/login";
       }
     },
+    
+    clearError(state) {
+      state.error = null;
+    },
+    
+    setSession(state, action) {
+      const { portal, data } = action.payload;
+      const sessionKey = key(portal);
+      
+      AuthStorage.setAccessToken(data.token.access_token, portal);
+      
+      state.sessions[sessionKey] = {
+        phase: "authenticated",
+        portal,
+        user: data.user,
+      };
+    }
   },
   extraReducers: (builder) => {
     builder
+      // Login cases
       .addCase(login.pending, (state) => {
         state.loading = true;
         state.error = null;
-        state.successMessage = null;
       })
       .addCase(login.fulfilled, (state, action) => {
+        const { data, portal, email, redirectTo } = action.payload;
+        const sessionKey = key(portal);
+        
         state.loading = false;
-        state.user = action.payload.user;
-        state.token = action.payload.token;
-        state.guard = action.payload.guard;
-        state.isAuthenticated = true;
-        state.successMessage = 'Login successful';
-        state.tabId = action.payload.tab_session_id || tabId;
+        
+        if (data.requires_verification) {
+          state.sessions[sessionKey] = {
+            phase: "otp_required",
+            portal,
+            email,
+            sessionId: data.session_id,
+          };
+          return;
+        }
+
+        // Store token and redirect
+        AuthStorage.setAccessToken(data.token.access_token, portal);
+        
+        state.sessions[sessionKey] = {
+          phase: "authenticated",
+          portal,
+          user: data.user,
+        };
+        
+        // Redirect to appropriate dashboard
+        if (typeof window !== "undefined") {
+          setTimeout(() => {
+            window.location.href = redirectTo;
+          }, 100);
+        }
       })
       .addCase(login.rejected, (state, action) => {
         state.loading = false;
-        state.error = action.payload?.message || 'Login failed';
+        state.error = action.payload as string || "Login failed";
       })
-      .addCase(loadUser.pending, (state) => {
+      
+      // OTP cases
+      .addCase(verifyOtp.pending, (state) => {
         state.loading = true;
         state.error = null;
       })
-      .addCase(loadUser.fulfilled, (state, action) => {
+      .addCase(verifyOtp.fulfilled, (state, action) => {
+        const { data, portal, redirectTo } = action.payload;
+        const sessionKey = key(portal);
+        
         state.loading = false;
-        state.user = action.payload.user;
-        state.token = action.payload.token;
-        state.isAuthenticated = true;
+        
+        AuthStorage.setAccessToken(data.token.access_token, portal);
+        
+        state.sessions[sessionKey] = {
+          phase: "authenticated",
+          portal,
+          user: data.user,
+        };
+        
+        // Redirect to appropriate dashboard
+        if (typeof window !== "undefined") {
+          setTimeout(() => {
+            window.location.href = redirectTo;
+          }, 100);
+        }
       })
-      .addCase(loadUser.rejected, (state, action) => {
+      .addCase(verifyOtp.rejected, (state, action) => {
         state.loading = false;
-        state.user = null;
-        state.token = null;
-        state.guard = null;
-        state.isAuthenticated = false;
-        state.error = action.payload?.message || 'Session expired';
+        state.error = action.payload as string || "OTP verification failed";
       })
-      .addCase(logout.fulfilled, (state) => {
-        state.user = null;
-        state.token = null;
-        state.guard = null;
-        state.isAuthenticated = false;
-        state.successMessage = 'Logged out successfully';
+      
+      // Logout cases
+      .addCase(logout.pending, (state) => {
+        state.logoutLoading = true;
+        state.error = null;
+      })
+      .addCase(logout.fulfilled, (state, action) => {
+        const { portal } = action.payload;
+        const sessionKey = key(portal);
+        
+        state.logoutLoading = false;
+        delete state.sessions[sessionKey];
+        state.error = null;
+        
+        // Redirect to login page
+        if (typeof window !== "undefined") {
+          setTimeout(() => {
+            window.location.href = portal === "admin" ? "/admin/login" : "/customer/login";
+          }, 100);
+        }
+      })
+      .addCase(logout.rejected, (state, action) => {
+        state.logoutLoading = false;
+        // Still clear sessions even if logout failed
+        const portal = action.meta.arg as "admin" | "customer";
+        const sessionKey = key(portal);
+        delete state.sessions[sessionKey];
+        
+        // Redirect to login page
+        if (typeof window !== "undefined") {
+          setTimeout(() => {
+            window.location.href = portal === "admin" ? "/admin/login" : "/customer/login";
+          }, 100);
+        }
+      })
+      
+      // Session check cases
+      .addCase(checkSession.fulfilled, (state, action) => {
+        const { portal, token } = action.payload;
+        const sessionKey = key(portal);
+        
+        if (!state.sessions[sessionKey]) {
+          state.sessions[sessionKey] = {
+            phase: "authenticated",
+            portal,
+            token,
+          };
+        }
       });
   },
 });
 
-export const { resetAuthState, initializeAuth } = authSlice.actions;
-export default authSlice.reducer;
+export const { forceLogout, clearError, setSession } = slice.actions;
+export default slice.reducer;

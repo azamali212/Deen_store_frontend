@@ -1,5 +1,6 @@
 import Dashboard from '../app/(dashboard)/dashboard/page';
 import { color } from 'framer-motion';
+import classNames from 'classnames';
 "use client"
 
 //Auth 
@@ -21,6 +22,8 @@ export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElemen
   className?: string;
   style?: React.CSSProperties;
   size?: 'sm' | 'md' | 'lg';
+  as?: ButtonAs;
+  [key: string]: any; 
 }
 
 export interface TemporaryPermission {
@@ -223,11 +226,8 @@ export type StyleType = 'primary' | 'light' | 'dark' | 'accent';
 export interface SidebarItemProps {
   label: string;
   collapsed: boolean;
-  icon: React.ReactElement<{
-    size?: number;
-    strokeWidth?: number;
-    className?: string;
-  }>;
+ 
+  icon: React.ReactNode;
   showTooltip?: boolean;
   href?: string;
   activeClass?: string;
@@ -239,7 +239,8 @@ export interface DropdownItem {
   href?: string;
   icon?: React.ReactNode;
   onClick?: () => void;
-}
+  className?: string;
+}S
 
 export interface DropDownProps {
   icon?: React.ReactElement<{ size?: number; strokeWidth?: number } & React.SVGProps<SVGSVGElement>>;
@@ -349,14 +350,33 @@ export interface LoginPayload {
 }
 
 export interface LoginResponse {
+  success: boolean;
+  message: string;
+  token: {
+    access_token: string;
+    refresh_token: string;
+    expires_in: number;
+  };
+  session: {
+    session_id: string;
+    guard: string;
+    portal: string;
+    ip: string;
+    device: string;
+    browser: string;
+    os: string;
+    logged_at: string;
+  };
   user: User;
-  token: string;
-  role: string[]// Added role to the response
-  permissions: string[]; // Added permissions to the response
-  message?: string;
-  guard: string; // Added guard to the response
-  tab_session_id: string;
+  access: {
+    allowed_pages: string[];
+    redirect_to: string;
+  };
+  guard: string;
+  tabId: string;
 }
+
+
 
 export interface GuardState {
   user: User | null;
@@ -377,6 +397,10 @@ export interface ErrorResponse {
   message: string;
   details?: string;
   status?: number;
+  user?: User | null;
+  token?: string | null;
+  guard?: string | null;
+  errors?: string;
 }
 export interface ErrorDetails {
   message: string;
@@ -388,11 +412,12 @@ export interface AuthState {
   token: string | null;
   loading: boolean;
   error: string | null;
-  successMessage: string | null;
+  successMessage: string | null;   // REQUIRED
   isAuthenticated: boolean;
   tabId: string;
   guard: string | null;
 }
+
 
 //ForgetPassword
 export interface ForgotPasswordPayload {

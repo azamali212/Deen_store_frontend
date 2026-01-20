@@ -1,3 +1,4 @@
+
 import { generateMetadata } from "@/lib/metadata";
 import Head from "next/head";
 

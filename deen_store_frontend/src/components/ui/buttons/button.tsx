@@ -1,9 +1,9 @@
 'use client';
 
-import { Colors } from '@/constants/colors';
 import { ButtonProps } from '@/types/ui';
 import React from 'react';
 import { Loader2 } from 'lucide-react';
+import { getThemeColor, COLORS } from '@/constants/colors'; // Import COLORS here
 
 // Extend the ButtonProps to include the destructive variant
 type ButtonVariant = 'primary' | 'success' | 'danger' | 'warning' | 'info' | 'ghost' | 'text' | 'destructive';
@@ -11,7 +11,7 @@ type ButtonVariant = 'primary' | 'success' | 'danger' | 'warning' | 'info' | 'gh
 interface ExtendedButtonProps extends ButtonProps {
   isLoading?: boolean;
   loadingText?: string;
-  variant?: ButtonVariant; // Add this to override the parent type
+  variant?: ButtonVariant;
 }
 
 const Button: React.FC<ExtendedButtonProps> = ({
@@ -22,57 +22,61 @@ const Button: React.FC<ExtendedButtonProps> = ({
   style = {},
   variant = 'primary',
   disabled,
+  
   ...props
 }) => {
   const baseStyle = 'px-4 py-2 font-medium rounded-lg transition-all duration-200 flex items-center justify-center';
-
-  // Add destructive variant to both classes and styles
-  const variantClasses = {
-    primary: `bg-[var(--primary)] text-[var(--text-light)] hover:bg-[var(--primary-hover)]`,
-    success: `bg-green-600 text-white hover:bg-green-700`,
-    danger: `bg-red-600 text-white hover:bg-red-700`,
-    destructive: `bg-red-600 text-white hover:bg-red-700`, // Same as danger for consistency
-    warning: `bg-yellow-500 text-white hover:bg-yellow-600`,
-    info: `bg-blue-500 text-white hover:bg-blue-600`,
-    ghost: `bg-transparent border border-[var(--gray-300)] text-gray-700 hover:bg-gray-100`,
-    text: 'bg-transparent text-[var(--primary)] hover:underline p-0',
-  };
   
+  // Get current theme (you can also pass theme as prop or use context)
+  // For now, we'll assume light theme as default
+  const theme = 'light'; // Replace with your theme detection logic
+  const colors = getThemeColor(theme);
+
   const variantStyles = {
     primary: {
       backgroundColor: 'var(--primary)',
-      color: 'var(--text-light)',
+      color: '#ffffff',
     },
     success: {
-      backgroundColor: '#16a34a',
+      backgroundColor: 'var(--accent)', // Using your accent color
       color: '#ffffff',
     },
     danger: {
-      backgroundColor: '#dc2626',
+      backgroundColor: 'var(--error)',
       color: '#ffffff',
     },
     destructive: {
-      backgroundColor: '#dc2626',
+      backgroundColor: 'var(--error)',
       color: '#ffffff',
     },
     warning: {
-      backgroundColor: '#eab308',
+      backgroundColor: COLORS.common.yellow[500], // Now COLORS is available
       color: '#ffffff',
     },
     info: {
-      backgroundColor: '#3b82f6',
+      backgroundColor: COLORS.common.blue[500], // Now COLORS is available
       color: '#ffffff',
     },
     ghost: {
       backgroundColor: 'transparent',
-      border: `1px solid ${Colors.gray[300]}`,
-      color: '#374151',
+      border: `1px solid ${colors.gray[300]}`,
+      color: colors.text.primary,
     },
     text: {
       backgroundColor: 'transparent',
       color: 'var(--primary)',
-      textDecoration: 'underline',
     },
+  };
+
+  const variantClasses = {
+    primary: `bg-[var(--primary)] text-white hover:bg-[var(--primary-hover)]`,
+    success: `bg-[var(--accent)] text-white hover:bg-green-600`,
+    danger: `bg-[var(--error)] text-white hover:bg-red-700`,
+    destructive: `bg-[var(--error)] text-white hover:bg-red-700`,
+    warning: `bg-yellow-500 text-white hover:bg-yellow-600`,
+    info: `bg-blue-500 text-white hover:bg-blue-600`,
+    ghost: `bg-transparent border border-gray-300 text-gray-700 hover:bg-gray-100`,
+    text: 'bg-transparent text-[var(--primary)] hover:underline p-0',
   };
 
   return (

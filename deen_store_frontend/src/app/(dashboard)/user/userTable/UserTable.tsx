@@ -235,7 +235,7 @@ const UserTable: React.FC<UserTableProps> = ({ onOpenRecycleBin }) => {
     // Location renderer with live status
     const renderLocation = (user: any) => {
         const locationData = user.location_data;
-        
+
         if (!locationData || !locationData.last_known_location) {
             return (
                 <div className="flex items-center gap-2 text-gray-400">
@@ -264,11 +264,10 @@ const UserTable: React.FC<UserTableProps> = ({ onOpenRecycleBin }) => {
                     </span>
                 </div>
                 <div className="flex items-center gap-1 text-xs">
-                    <span className={`px-1 rounded ${
-                        isOnline 
-                            ? 'bg-green-100 text-green-800' 
+                    <span className={`px-1 rounded ${isOnline
+                            ? 'bg-green-100 text-green-800'
                             : 'bg-gray-100 text-gray-600'
-                    }`}>
+                        }`}>
                         {isOnline ? 'Online' : 'Offline'}
                     </span>
                     <span className="text-gray-500" title={`Last updated: ${locationAge}`}>
@@ -584,7 +583,11 @@ const UserTable: React.FC<UserTableProps> = ({ onOpenRecycleBin }) => {
                 transition={{ duration: 0.6, delay: 0.6 }}
                 className="bg-white rounded-xl"
             >
-                <div className="p-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                <div style={{
+                    backgroundColor: 'var(--surface)',
+                    borderColor: 'var(--border)',
+                    color: 'var(--text-primary)',
+                }} className="p-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                     <div className="flex flex-col sm:flex-row sm:items-center gap-4 w-full">
                         <h2 className="text-xl font-semibold text-gray-900">
                             User Management <span className="text-gray-500">{pagination.total > 0 && `(${pagination.total})`}</span>
@@ -607,7 +610,7 @@ const UserTable: React.FC<UserTableProps> = ({ onOpenRecycleBin }) => {
                                 <RefreshCw className={`w-4 h-4 ${autoRefresh ? 'animate-spin' : ''}`} />
                             </Button>
                         </Tooltip>
-                        
+
                         <Tooltip content="Manual refresh">
                             <Button
                                 variant="ghost"

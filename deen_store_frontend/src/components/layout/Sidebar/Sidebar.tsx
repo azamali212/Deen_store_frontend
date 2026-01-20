@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
+import { usePathname } from 'next/navigation'; // ADD THIS IMPORT
 import { SidebarProps } from '@/types/ui';
 import {
   LayoutDashboard,
@@ -10,26 +11,30 @@ import {
   Cuboid,
   VenusAndMarsIcon,
   PanelTopInactive,
-  ReceiptPoundSterlingIcon,
-  ColumnsSettingsIcon,
-  UserCircleIcon,
-  PercentDiamondIcon,
+  ChevronLeft,
+  ChevronRight,
+  Settings,
+  BarChart3,
+  Package,
+  ShoppingCart,
+  UserCircle,
+  FileText,
+  Bell,
+  HelpCircle,
 } from 'lucide-react';
 import SidebarItem from './SidebarItem';
 import { applySavedTheme } from '@/utility/theme';
 import SidebarDropdown from '@/components/ui/dropdown/SidebarDropdown';
 import clsx from 'clsx';
 import ROUTES from '@/constants/route.constant';
-import { useCurrentUserRole } from '@/hooks/currentUserRole/useCurrentUserRole';
-import { hasSidebarPermission } from '@/utility/sidebarPermissions';
-
 
 const Sidebar: React.FC<SidebarProps & {
   toggleSecondarySidebar: (item: string | null) => void;
   activeSidebarItem: string | null;
 }> = ({ collapsed, setCollapsed, toggleSecondarySidebar, activeSidebarItem }) => {
   const [openDropdown, setOpenDropdown] = useState<string | null>(null);
-  const { userRole, loading } = useCurrentUserRole();
+  const [hovered, setHovered] = useState(false);
+  const pathname = usePathname(); // ADD THIS LINE
 
   useEffect(() => {
     applySavedTheme();
@@ -41,311 +46,215 @@ const Sidebar: React.FC<SidebarProps & {
 
   const isDropdownOpen = (label: string) => openDropdown === label;
 
-  // Filter sidebar items based on user role
-  const shouldShowItem = (itemKey: string) => {
-    if (loading) return false;
-    return hasSidebarPermission(itemKey, userRole);
-  };
-
-  // Show loading state
-  if (loading) {
-    return (
-      <aside
-        className={`fixed top-0 left-0 z-40 h-screen transition-all duration-300 pt-16 text-[rgb(var(--sidebar-text))] bg-[rgb(var(--sidebar-bg))] ${collapsed ? 'w-24' : 'w-64'}`}
-      >
-        <nav className={`h-full p-2 px-3 pb-4 pt-4 overflow-y-auto scrollbar-hidden ${collapsed ? 'pt-15' : 'pt-2'}`}>
-          <div className="flex flex-col space-y-2">
-            {/* Loading skeleton */}
-            {[...Array(8)].map((_, i) => (
-              <div
-                key={i}
-                className={`flex items-center rounded-lg h-10 animate-pulse bg-gray-300 ${collapsed ? 'w-10 mx-auto' : 'w-full px-3'}`}
-              />
-            ))}
-          </div>
-        </nav>
-      </aside>
-    );
-  }
-
   return (
     <aside
-      className={`fixed top-0 left-0 z-40 h-screen transition-all duration-300 pt-16 text-[rgb(var(--sidebar-text))] bg-[rgb(var(--sidebar-bg))] ${collapsed ? 'w-24' : 'w-64'}`}
+      className={`fixed top-0 left-0 z-40 h-screen transition-all duration-300 ease-in-out pt-16 ${
+        collapsed ? 'w-20' : 'w-64'
+      }`}
       style={{
-        boxShadow: '0 4px 30px rgba(0, 0, 0, 0.2)',
-        borderRight: '1px solid rgba(0, 0, 0, 0.05)',
+        background: 'linear-gradient(180deg, rgb(var(--sidebar-bg)) 0%, rgba(var(--sidebar-bg), 0.95) 100%)',
+        boxShadow: '4px 0 20px rgba(0, 0, 0, 0.08)',
+        borderRight: '1px solid rgba(255, 255, 255, 0.05)',
       }}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
     >
-      <nav className={`h-full p-2 px-3 pb-4 pt-4 overflow-y-auto scrollbar-hidden ${collapsed ? 'pt-15' : 'pt-2'}`}>
-        <div className="flex flex-col space-y-2">
-
-          {/* Dashboard */}
-          {shouldShowItem('dashboard') && (
-            <SidebarDropdown
-              icon={<LayoutDashboard />}
-              label="Dashboard"
-              activeClass="bg-gray-500 dark:bg-gray-700 dark:text-white"
-              href={ROUTES.DASHBOARD}
-              collapsed={collapsed}
-              items={[
-                { label: 'Ecommerce', href: '/dashboard' },
-                { label: 'CRM', href: '/dashboard/crm' },
-                { label: 'Management', href: '/dashboard/management' },
-              ]}
-            />
+      {/* Collapse Toggle Button */}
+      <div 
+        className={`absolute -right-3 top-6 z-50 transition-all duration-300 ${
+          hovered ? 'opacity-100' : 'opacity-70'
+        }`}
+      >
+        <button
+          onClick={() => setCollapsed(!collapsed)}
+          className="flex items-center justify-center w-6 h-6 rounded-full bg-white shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-110 border border-gray-200"
+          aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+        >
+          {collapsed ? (
+            <ChevronRight className="w-4 h-4 text-gray-700" />
+          ) : (
+            <ChevronLeft className="w-4 h-4 text-gray-700" />
           )}
+        </button>
+      </div>
 
-          {/* App Section Divider - Only show if there are app items to display */}
-          {(shouldShowItem('ecommerce') || shouldShowItem('users') || shouldShowItem('customer') || shouldShowItem('vendor_management')) && (
-            <div className={clsx(
-              'flex items-center justify-between',
-              collapsed ? 'my-3 px-1' : 'my-4 px-3'
-            )}>
-              <div className="flex-grow h-px bg-gray-300 dark:bg-gray-300"></div>
-              {!collapsed && (
-                <span className="mx-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                  App
-                </span>
-              )}
-              <div className="flex-grow h-px bg-gray-300 dark:bg-gray-300"></div>
-            </div>
-          )}
+      <nav className={`h-full p-4 pb-6 overflow-y-auto scrollbar-hidden transition-all duration-300 ${
+        collapsed ? 'px-2' : 'px-4'
+      }`}>
+        
 
-          {/* Ecommerce */}
-          {shouldShowItem('ecommerce') && (
-            <SidebarItem
-              icon={<ShoppingBag />}
-              label="Ecommerce"
-              collapsed={collapsed}
-              onMouseEnter={() => toggleSecondarySidebar('Ecommerce')}
-              isActive={activeSidebarItem === 'Ecommerce'}
-            />
-          )}
+        {/* Main Navigation */}
+        <div className="space-y-1 mb-6">
+          <p className={`text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3 transition-all duration-300 ${
+            collapsed ? 'text-center' : 'px-3'
+          }`}>
+            {collapsed ? '···' : 'MAIN'}
+          </p>
+          
+          <SidebarItem
+            icon={<LayoutDashboard />}
+            label="Dashboard"
+            href="/dashboard"
+            collapsed={collapsed}
+            isActive={pathname === '/dashboard'}
+          />
 
-          {/* Users */}
-          {shouldShowItem('users') && (
-            <SidebarDropdown
-              icon={<Users />}
-              label="Users"
-              collapsed={collapsed}
-              items={[
-                { label: 'Users Management', href: ROUTES.USER },
-                { label: 'User Logs', href: '/dashboard/roles' },
-              ]}
-            />
-          )}
+          <SidebarDropdown
+            icon={<ShoppingBag />}
+            label="Ecommerce"
+            collapsed={collapsed}
+            onMouseEnter={() => toggleSecondarySidebar('Ecommerce')}
+            isActive={activeSidebarItem === 'Ecommerce'}
+            items={[
+              { label: 'Products', href: '/dashboard/products' },
+              { label: 'Orders', href: '/dashboard/orders' },
+              { label: 'Categories', href: '/dashboard/categories' },
+              { label: 'Customers', href: '/dashboard/customers' },
+            ]}
+          />
 
-          {/* Customer */}
-          {shouldShowItem('customer') && (
-            <SidebarDropdown
-              icon={<Cuboid />}
-              label="Customer"
-              collapsed={collapsed}
-              items={[
-                { label: 'All Customers', href: '/dashboard/customers' },
-                { label: 'Groups', href: '/dashboard/groups' },
-              ]}
-            />
-          )}
+          <SidebarDropdown
+            icon={<Users />}
+            label="Users"
+            collapsed={collapsed}
+            onMouseEnter={() => toggleSecondarySidebar('Users')}
+            isActive={activeSidebarItem === 'Users'}
+            items={[
+              { label: 'All Users', href: ROUTES.USER },
+              { label: 'Roles', href: '/role' },
+              { label: 'Permissions', href: '/permissions' },
+              { label: 'Activity Log', href: '/dashboard/activity' },
+            ]}
+          />
 
-          {/* Vendor Management */}
-          {shouldShowItem('vendor_management') && (
-            <SidebarDropdown
-              icon={<VenusAndMarsIcon />}
-              label="Vendor Management"
-              collapsed={collapsed}
-              items={[
-                { label: 'Vendors', href: '/dashboard/vendors' },
-                { label: 'Categories', href: '/dashboard/vendor-categories' },
-              ]}
-            />
-          )}
+          <SidebarItem
+            icon={<BarChart3 />}
+            label="Analytics"
+            href="/dashboard/analytics"
+            collapsed={collapsed}
+            isActive={pathname === '/dashboard/analytics'}
+          />
 
-          {/* Inventory Management */}
-          {shouldShowItem('inventory_management') && (
-            <SidebarDropdown
-              icon={<PanelTopInactive />}
-              label="Inventory Management"
-              collapsed={collapsed}
-              items={[
-                { label: 'Products', href: '/dashboard/products' },
-                { label: 'Stock', href: '/dashboard/stock' },
-              ]}
-            />
-          )}
-
-          {/* Analytics & Reports */}
-          {shouldShowItem('analytics_reports') && (
-            <SidebarDropdown
-              icon={<ReceiptPoundSterlingIcon />}
-              label="Analytics & Reports"
-              collapsed={collapsed}
-              items={[
-                { label: 'Sales Reports', href: '/dashboard/reports/sales' },
-                { label: 'User Analytics', href: '/dashboard/reports/users' },
-              ]}
-            />
-          )}
-
-          {/* Customization */}
-          {shouldShowItem('customization') && (
-            <SidebarDropdown
-              icon={<ColumnsSettingsIcon />}
-              label="Customization"
-              collapsed={collapsed}
-              items={[
-                { label: 'Themes', href: '/dashboard/themes' },
-                { label: 'Layout', href: '/dashboard/layout' },
-              ]}
-            />
-          )}
-
-          {/* Profile Settings */}
-          {shouldShowItem('profile_settings') && (
-            <SidebarDropdown
-              icon={<UserCircleIcon />}
-              label="Profile Settings"
-              collapsed={collapsed}
-              items={[
-                { label: 'My Profile', href: '/dashboard/profile' },
-                { label: 'Security', href: '/dashboard/security' },
-              ]}
-            />
-          )}
-
-          {/* Roles & Permissions */}
-          {shouldShowItem('roles_permissions') && (
-            <SidebarDropdown
-              icon={<PercentDiamondIcon />}
-              label="Roles & Permissions"
-              collapsed={collapsed}
-              items={[
-                { label: 'Roles', href: ROUTES.ROLE },
-                { label: 'Permissions', href: ROUTES.PERMISSIONS },
-              ]}
-            />
-          )}
-
-          {/* Multi Support */}
-          {shouldShowItem('multi_support') && (
-            <SidebarDropdown
-              icon={<Cuboid />}
-              label="Multi Support"
-              collapsed={collapsed}
-              items={[
-                { label: 'Languages', href: '/dashboard/multi-language' },
-                { label: 'Locales', href: '/dashboard/locales' },
-              ]}
-            />
-          )}
-
-          {/* Setting Section Divider - Only show if there are setting items to display */}
-          {(shouldShowItem('language_settings') || shouldShowItem('logistics') || shouldShowItem('salary_management') || shouldShowItem('payment_management')) && (
-            <div className={clsx(
-              'flex items-center justify-between',
-              collapsed ? 'my-3 px-1' : 'my-4 px-3'
-            )}>
-              <div className="flex-grow h-px bg-gray-300 dark:bg-gray-300"></div>
-              {!collapsed && (
-                <span className="mx-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                  Setting
-                </span>
-              )}
-              <div className="flex-grow h-px bg-gray-300 dark:bg-gray-300"></div>
-            </div>
-          )}
-
-          {/* Language Settings */}
-          {shouldShowItem('language_settings') && (
-            <SidebarDropdown
-              icon={<Cuboid />}
-              label="Language Settings"
-              collapsed={collapsed}
-              items={[
-                { label: 'Languages', href: '/dashboard/languages' },
-                { label: 'Text Translations', href: '/dashboard/translations' },
-              ]}
-            />
-          )}
-
-          {/* Logistics */}
-          {shouldShowItem('logistics') && (
-            <SidebarDropdown
-              icon={<Cuboid />}
-              label="Logistics"
-              collapsed={collapsed}
-              items={[
-                { label: 'Shipping Zones', href: '/dashboard/shipping' },
-                { label: 'Carriers', href: '/dashboard/carriers' },
-              ]}
-            />
-          )}
-
-          {/* Salary Management */}
-          {shouldShowItem('salary_management') && (
-            <SidebarDropdown
-              icon={<Cuboid />}
-              label="Salary Management"
-              collapsed={collapsed}
-              items={[
-                { label: 'Payroll', href: '/dashboard/payroll' },
-                { label: 'Bonuses', href: '/dashboard/bonuses' },
-              ]}
-            />
-          )}
-
-          {/* Payment Management */}
-          {shouldShowItem('payment_management') && (
-            <SidebarDropdown
-              icon={<Cuboid />}
-              label="Payment Management"
-              collapsed={collapsed}
-              items={[
-                { label: 'Invoices', href: '/dashboard/invoices' },
-                { label: 'Gateways', href: '/dashboard/payment-gateways' },
-              ]}
-            />
-          )}
-
-          {/* Marketing & Promotions */}
-          {shouldShowItem('marketing_promotions') && (
-            <SidebarDropdown
-              icon={<Cuboid />}
-              label="Marketing & Promotions"
-              collapsed={collapsed}
-              items={[
-                { label: 'Campaigns', href: '/dashboard/campaigns' },
-                { label: 'Coupons', href: '/dashboard/coupons' },
-              ]}
-            />
-          )}
-
-          {/* Content Management */}
-          {shouldShowItem('content_management') && (
-            <SidebarDropdown
-              icon={<Cuboid />}
-              label="Content Management"
-              collapsed={collapsed}
-              items={[
-                { label: 'Pages', href: '/dashboard/pages' },
-                { label: 'Banners', href: '/dashboard/banners' },
-              ]}
-            />
-          )}
-
-          {/* Email */}
-          {shouldShowItem('email') && (
-            <SidebarDropdown
-              icon={<Mail />}
-              label="Email"
-              collapsed={collapsed}
-              items={[
-                { label: 'Inbox', href: '/dashboard/inbox' },
-                { label: 'Sent', href: '/dashboard/sent' },
-              ]}
-            />
-          )}
+          <SidebarItem
+            icon={<Package />}
+            label="Inventory"
+            href="/dashboard/inventory"
+            collapsed={collapsed}
+            isActive={pathname === '/dashboard/inventory'}
+          />
         </div>
+
+        {/* Business Section */}
+        <div className="space-y-1 mb-6">
+          <p className={`text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3 transition-all duration-300 ${
+            collapsed ? 'text-center' : 'px-3'
+          }`}>
+            {collapsed ? '···' : 'BUSINESS'}
+          </p>
+
+          <SidebarItem
+            icon={<ShoppingCart />}
+            label="Sales"
+            href="/dashboard/sales"
+            collapsed={collapsed}
+            isActive={pathname === '/dashboard/sales'}
+          />
+
+          <SidebarItem
+            icon={<Cuboid />}
+            label="Vendors"
+            href="/dashboard/vendors"
+            collapsed={collapsed}
+            isActive={pathname === '/dashboard/vendors'}
+          />
+
+          <SidebarItem
+            icon={<VenusAndMarsIcon />}
+            label="Partners"
+            href="/dashboard/partners"
+            collapsed={collapsed}
+            isActive={pathname === '/dashboard/partners'}
+          />
+
+          <SidebarItem
+            icon={<FileText />}
+            label="Reports"
+            href="/dashboard/reports"
+            collapsed={collapsed}
+            isActive={pathname === '/dashboard/reports'}
+          />
+        </div>
+
+        {/* System Section */}
+        <div className="space-y-1 mb-6">
+          <p className={`text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3 transition-all duration-300 ${
+            collapsed ? 'text-center' : 'px-3'
+          }`}>
+            {collapsed ? '···' : 'SYSTEM'}
+          </p>
+
+          <SidebarItem
+            icon={<Settings />}
+            label="Settings"
+            href="/dashboard/settings"
+            collapsed={collapsed}
+            isActive={pathname === '/dashboard/settings'}
+          />
+
+          <SidebarItem
+            icon={<UserCircle />}
+            label="Profile"
+            href="/dashboard/profile"
+            collapsed={collapsed}
+            isActive={pathname === '/dashboard/profile'}
+          />
+
+          <SidebarItem
+            icon={<Bell />}
+            label="Notifications"
+            href="/notifications"
+            collapsed={collapsed}
+            isActive={pathname === '/notifications'}
+          />
+
+          <SidebarItem
+            icon={<Mail />}
+            label="Messages"
+            href="/dashboard/messages"
+            collapsed={collapsed}
+            isActive={pathname === '/dashboard/messages'}
+          />
+        </div>
+
+        {/* Help Section */}
+        {!collapsed && (
+          <div className="mt-auto pt-6 border-t border-gray-200 dark:border-gray-700">
+            <div className="bg-gradient-to-r from-blue-50 to-purple-50 dark:from-gray-800 dark:to-gray-900 rounded-xl p-4">
+              <div className="flex items-center space-x-3 mb-2">
+                <div className="w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-900 flex items-center justify-center">
+                  <HelpCircle className="w-5 h-5 text-blue-600 dark:text-blue-300" />
+                </div>
+                <div>
+                  <h4 className="text-sm font-semibold text-gray-800 dark:text-white">Need Help?</h4>
+                  <p className="text-xs text-gray-600 dark:text-gray-400">Check our docs</p>
+                </div>
+              </div>
+              <button className="w-full py-2 text-xs font-medium text-white bg-gradient-to-r from-blue-500 to-purple-500 rounded-lg hover:opacity-90 transition-opacity">
+                Get Support
+              </button>
+            </div>
+          </div>
+        )}
+
+        {collapsed && (
+          <div className="mt-auto pt-6 border-t border-gray-200 dark:border-gray-700">
+            <div className="flex justify-center">
+              <button className="w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-900 flex items-center justify-center hover:bg-blue-200 dark:hover:bg-blue-800 transition-colors">
+                <HelpCircle className="w-5 h-5 text-blue-600 dark:text-blue-300" />
+              </button>
+            </div>
+          </div>
+        )}
       </nav>
     </aside>
   );

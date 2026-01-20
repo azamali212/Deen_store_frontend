@@ -2,6 +2,8 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import ReduxProviderWrapper from "./ReduxProviderWrapper";
 import { ToastContainer } from "react-toastify";
+import { ThemeProvider } from './providers/ThemeProvider';
+import ThemeInitializer from "@/components/ThemeInitializer/ThemeInitializer";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -12,18 +14,6 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
-const themeScript = `
-(function () {
-  try {
-    var theme = localStorage.getItem('theme');
-    if (!theme) {
-      theme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-    }
-    document.documentElement.classList.add(theme);
-  } catch(e) {}
-})();
-`;
-
 export const metadata = {
   metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'),
 };
@@ -33,22 +23,25 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en" suppressHydrationWarning>
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
         <ReduxProviderWrapper>
-          {children}
-          <ToastContainer
-            position="top-right"
-            autoClose={5000}
-            hideProgressBar={false}
-            newestOnTop={false}
-            closeOnClick
-            rtl={false}
-            pauseOnFocusLoss
-            draggable
-            pauseOnHover
-            theme="colored"
-            style={{ zIndex: 9999 }}
-          />
+          <ThemeProvider>
+          <ThemeInitializer />
+            {children}
+            <ToastContainer
+              position="top-right"
+              autoClose={5000}
+              hideProgressBar={false}
+              newestOnTop={false}
+              closeOnClick
+              rtl={false}
+              pauseOnFocusLoss
+              draggable
+              pauseOnHover
+              theme="colored"
+              style={{ zIndex: 9999 }}
+            />
+          </ThemeProvider>
         </ReduxProviderWrapper>
-        <script dangerouslySetInnerHTML={{ __html: themeScript }} />
+        {/* REMOVE THIS LINE: <script dangerouslySetInnerHTML={{ __html: themeScript }} /> */}
       </body>
     </html>
   );

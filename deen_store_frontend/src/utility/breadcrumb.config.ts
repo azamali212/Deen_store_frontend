@@ -6,6 +6,7 @@ const BREADCRUMB_CONFIG: { [key: string]: { label: string; href: string } } = {
     [ROUTES.DASHBOARD]: { label: 'Ecommerce', href: ROUTES.DASHBOARD },
     [ROUTES.PERMISSIONS]: { label: 'Permissions', href: ROUTES.PERMISSIONS }, 
     [ROUTES.USER]: { label: 'User', href: ROUTES.USER }, 
+    [ROUTES.NOTIFICATIONS]: { label: 'Notification', href: ROUTES.NOTIFICATIONS }, 
   };
 
 

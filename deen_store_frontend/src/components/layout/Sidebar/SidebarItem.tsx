@@ -29,53 +29,80 @@ const SidebarItem: React.FC<SidebarItemProps & {
   if (!mounted) {
     return (
       <div className={clsx(
-        'flex items-center rounded-lg h-10',
-        collapsed ? 'w-10 justify-center mx-auto' : 'w-full px-3'
+        'flex items-center rounded-xl h-12',
+        collapsed ? 'w-12 justify-center mx-auto' : 'w-full px-3'
       )} />
     );
   }
 
-  const isLinkActive = pathname === href;
+  const isLinkActive = pathname === href || pathname?.startsWith(href);
   const showAsActive = isLinkActive || isActive;
 
-  const activeStyles = 'bg-[rgb(var(--sidebar-active-bg))] text-[rgb(var(--sidebar-active-text))] font-semibold';
-  const inactiveStyles = 'text-[rgb(var(--sidebar-text))] hover:bg-[rgb(var(--sidebar-hover-bg))]';
+  const baseStyles = 'flex items-center rounded-xl transition-all duration-200 h-12 w-full cursor-pointer group relative';
+  const collapsedStyles = collapsed ? 'w-12 justify-center mx-auto' : 'w-full px-4';
+  
+  const activeStyles = 'bg-gradient-to-r from-blue-500/20 to-purple-500/20 text-blue-600 dark:text-blue-400 font-semibold border-l-4 border-blue-500 shadow-sm';
+  const inactiveStyles = 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-white hover:shadow-sm';
 
   const content = (
     <div
       onClick={onClick}
       onMouseEnter={onMouseEnter}
       className={clsx(
-        'flex items-center rounded-lg transition-colors duration-200 h-10 w-full cursor-pointer text-sm',
-        collapsed ? 'w-10 justify-center mx-auto' : 'w-full px-3',
+        baseStyles,
+        collapsedStyles,
         showAsActive ? activeStyles : inactiveStyles
       )}
     >
-      <div className="flex items-center justify-center w-6 h-6">
+      <div className={clsx(
+        'flex items-center justify-center w-8 h-8 rounded-lg transition-all duration-200',
+        showAsActive 
+          ? 'bg-gradient-to-br from-blue-500 to-purple-500 text-white' 
+          : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 group-hover:bg-blue-100 dark:group-hover:bg-blue-900/30 group-hover:text-blue-600 dark:group-hover:text-blue-400'
+      )}>
         {React.isValidElement(icon)
-          ? React.cloneElement(icon, {
-              size: 20,
-              strokeWidth: showAsActive ? 2 : 1.75,
+          ? React.cloneElement(icon as React.ReactElement<any>, {
+              size: 18,
+              strokeWidth: showAsActive ? 2.5 : 2,
               className: showAsActive 
-                ? 'text-[rgb(var(--sidebar-active-text))]' 
-                : 'text-[rgb(var(--sidebar-text))]',
+                ? 'text-white' 
+                : 'currentColor',
             })
           : icon}
       </div>
+      
       {!collapsed && (
-        <span className="ml-3 truncate">
-          {label}
-        </span>
+        <div className="ml-3 flex-1 flex items-center justify-between">
+          <span className="text-sm font-medium truncate">
+            {label}
+          </span>
+          {showAsActive && (
+            <div className="w-2 h-2 rounded-full bg-blue-500 animate-pulse"></div>
+          )}
+        </div>  
       )}
     </div>
   );
 
   if (onClick) {
-    return <button className="w-full">{content}</button>;
+    return (
+      <button className="w-full outline-none focus:outline-none">
+        {content}
+      </button>
+    );
   }
 
   return (
-    <Link href={href} className="w-full">
+    <Link 
+      href={href} 
+      className="w-full no-underline focus:outline-none"
+      onClick={(e) => {
+        if (onClick) {
+          e.preventDefault();
+          onClick(e);
+        }
+      }}
+    >
       {content}
     </Link>
   );

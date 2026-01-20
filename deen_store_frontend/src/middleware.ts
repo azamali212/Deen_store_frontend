@@ -1,98 +1,122 @@
-// middleware.ts - UPDATED
-import { NextResponse } from 'next/server';
-import type { NextRequest } from 'next/server';
+// middleware.ts
+import { NextResponse } from "next/server";
+import type { NextRequest } from "next/server";
 
-const generateTabId = () => {
-  return Math.random().toString(36).substring(2) + Date.now().toString(36);
-};
+const PUBLIC_ROUTES = [
+  "/admin/login",
+  "/customer/login",
+  "/otp",
+  "/",
+  "/api/debug-tokens", // Add debug endpoint
+];
 
-// Define protected routes for different user types
-const ADMIN_PROTECTED_PATHS = ['/dashboard', '/role', '/permissions', '/admin'];
-const CUSTOMER_PROTECTED_PATHS = ['/userInterface', '/customer'];
-const ALL_PROTECTED_PATHS = [...ADMIN_PROTECTED_PATHS, ...CUSTOMER_PROTECTED_PATHS];
+export function middleware(req: NextRequest) {
+  const { pathname } = req.nextUrl;
+  const url = req.nextUrl.clone();
 
-export function middleware(request: NextRequest) {
-  const { pathname, searchParams } = request.nextUrl;
+  console.log(`Middleware checking: ${pathname}`);
   
-  // Get auth data from cookies
-  const authToken = request.cookies.get('auth_token')?.value;
-  const userGuard = request.cookies.get('user_guard')?.value; // 'admin' or 'customer'
-  const currentTabId = request.cookies.get('currentTabId')?.value;
-
-  console.log('Middleware - Path:', pathname, 'Guard:', userGuard, 'Has token:', !!authToken);
-
-  // Skip auth checks for API routes, login page, and public assets
-  if (
-    pathname.startsWith('/api') || 
-    pathname === '/login' ||
-    pathname.startsWith('/_next') ||
-    pathname.startsWith('/static') ||
-    pathname.includes('.') // Skip files with extensions
-  ) {
+  // ✅ Allow public auth routes
+  if (PUBLIC_ROUTES.some((route) => pathname.startsWith(route))) {
+    console.log(`Public route allowed: ${pathname}`);
     return NextResponse.next();
   }
 
-  // Redirect old admin login route to new one
-  if (pathname === '/shopinity_admin_login') {
-    const newUrl = new URL('/login?portal=admin', request.url);
-    return NextResponse.redirect(newUrl);
+  // Get tokens from cookies
+  const adminToken = req.cookies.get("admin_access_token")?.value;
+  const customerToken = req.cookies.get("customer_access_token")?.value;
+  
+  console.log(`Tokens found - Admin: ${!!adminToken}, Customer: ${!!customerToken}`);
+  
+  // Check dashboard routes (ADMIN)
+  if (pathname === "/dashboard" || pathname.startsWith("/dashboard/")) {
+    console.log(`Checking dashboard access for ${pathname}`);
+    
+    if (!adminToken) {
+      console.log(`No admin token found for ${pathname}, redirecting to admin login`);
+      url.pathname = "/admin/login";
+      
+      // Also set a header to indicate redirect reason
+      const response = NextResponse.redirect(url);
+      response.headers.set("x-redirect-reason", "no-admin-token");
+      return response;
+    }
+    
+    console.log(`Admin token found, allowing access to ${pathname}`);
+    return NextResponse.next();
+  }
+  
+  // Check userInterface routes (CUSTOMER)
+  if (pathname === "/userInterface" || pathname.startsWith("/userInterface/")) {
+    console.log(`Checking userInterface access for ${pathname}`);
+    
+    if (!customerToken) {
+      console.log(`No customer token found for ${pathname}, redirecting to customer login`);
+      url.pathname = "/customer/login";
+      
+      const response = NextResponse.redirect(url);
+      response.headers.set("x-redirect-reason", "no-customer-token");
+      return response;
+    }
+    
+    console.log(`Customer token found, allowing access to ${pathname}`);
+    return NextResponse.next();
+  }
+  
+  // Check if accessing admin routes
+  if (pathname.startsWith("/admin")) {
+    if (!adminToken) {
+      console.log(`No admin token for admin route ${pathname}, redirecting`);
+      url.pathname = "/admin/login";
+      return NextResponse.redirect(url);
+    }
+    return NextResponse.next();
+  }
+  
+  // Check if accessing customer routes
+  if (pathname.startsWith("/customer")) {
+    if (!customerToken) {
+      console.log(`No customer token for customer route ${pathname}, redirecting`);
+      url.pathname = "/customer/login";
+      return NextResponse.redirect(url);
+    }
+    return NextResponse.next();
+  }
+  
+  // Redirect authenticated users away from login pages
+  if (pathname === "/admin/login" && adminToken) {
+    console.log(`Admin already logged in, redirecting from ${pathname} to dashboard`);
+    url.pathname = "/dashboard";
+    return NextResponse.redirect(url);
+  }
+  
+  if (pathname === "/customer/login" && customerToken) {
+    console.log(`Customer already logged in, redirecting from ${pathname} to userInterface`);
+    url.pathname = "/userInterface";
+    return NextResponse.redirect(url);
   }
 
-  // Check if the current path is protected
-  const isProtected = ALL_PROTECTED_PATHS.some(path => pathname.startsWith(path));
-  const isAdminPath = ADMIN_PROTECTED_PATHS.some(path => pathname.startsWith(path));
-  const isCustomerPath = CUSTOMER_PROTECTED_PATHS.some(path => pathname.startsWith(path));
-
-  if (isProtected) {
-    // If no auth token, redirect to login
-    if (!authToken) {
-      console.log('No auth token, redirecting to login');
-      const loginUrl = new URL('/login', request.url);
-      
-      // Only set redirect if it's not already a redirect loop
-      if (!pathname.startsWith('/login')) {
-        loginUrl.searchParams.set('redirect', pathname);
-      }
-      
-      return NextResponse.redirect(loginUrl);
-    }
-
-    // Check role-based access
-    if (isAdminPath && userGuard !== 'admin') {
-      console.log('Customer trying to access admin route, redirecting to customer page');
-      return NextResponse.redirect(new URL('/userInterface', request.url));
-    }
-
-    if (isCustomerPath && userGuard !== 'customer') {
-      console.log('Admin trying to access customer route, redirecting to dashboard');
-      return NextResponse.redirect(new URL('/dashboard', request.url));
-    }
-
-    // User has proper access, allow
-    const response = NextResponse.next();
-    
-    // Ensure tab ID exists
-    if (!currentTabId) {
-      response.cookies.set('currentTabId', generateTabId(), {
-        httpOnly: true,
-        sameSite: 'strict',
-        maxAge: 60 * 60 * 24 // 24 hours
-      });
-    }
-    
-    // Add cache control headers
-    response.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, private');
-    response.headers.set('Pragma', 'no-cache');
-    response.headers.set('Expires', '0');
-    
-    return response;
+  // For any other protected routes, check for any token
+  if (!adminToken && !customerToken) {
+    console.log(`No tokens found for ${pathname}, redirecting to customer login`);
+    url.pathname = "/customer/login";
+    return NextResponse.redirect(url);
   }
 
+  console.log(`Allowing access to ${pathname}`);
   return NextResponse.next();
 }
 
 export const config = {
   matcher: [
-    '/((?!api|_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|css|js)$).*)',
+    "/admin/:path*",
+    "/customer/:path*",
+    "/dashboard",
+    "/dashboard/:path*",
+    "/userInterface",
+    "/userInterface/:path*",
+    "/admin/login",
+    "/customer/login",
+    "/api/:path*", // Also protect API routes if needed
   ],
 };

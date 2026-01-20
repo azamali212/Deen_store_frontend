@@ -2,6 +2,7 @@
 'use client'
 import { AuthLayoutProps } from '@/types/ui';
 import { useSearchParams } from 'next/navigation';
+import { ThemeProvider } from '../providers/ThemeProvider';
 
 export default function AuthLayout({ children }: AuthLayoutProps) {
   const searchParams = useSearchParams();
@@ -25,7 +26,7 @@ export default function AuthLayout({ children }: AuthLayoutProps) {
         width: "100vw",
       }}
     >
-      <main className="text-gray-500">{children}</main>
+      <main className="text-gray-500"><ThemeProvider>{children}</ThemeProvider></main>
     </div>
   );
 }

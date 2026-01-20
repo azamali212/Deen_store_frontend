@@ -1,63 +1,58 @@
-export type Theme = 'light' | 'dark' | 'neon';
+// utility/theme.ts
+import { applyThemeVariables } from '@/constants/colors';
 
-// Themes cycle order
-const themeOrder: Theme[] = ['light', 'dark', 'neon'];
-
-export const getCurrentTheme = (): Theme => {
+export const applySavedTheme = (): 'light' | 'dark' => {
   if (typeof window === 'undefined') return 'light';
-
-  if (document.documentElement.classList.contains('dark')) return 'dark';
-  if (document.documentElement.classList.contains('neon')) return 'neon';
-  return 'light';
-};
-
-export const getNextTheme = (current: Theme): Theme => {
-  const currentIndex = themeOrder.indexOf(current);
-  return themeOrder[(currentIndex + 1) % themeOrder.length];
-};
-
-export const setTheme = (theme: Theme): void => {
-  if (typeof window === 'undefined') return;
-
-  const html = document.documentElement;
-  html.classList.remove(...themeOrder);
-  html.classList.add(theme);
-  localStorage.setItem('theme', theme);
-};
-
-export const toggleTheme = (): Theme => {
-  if (typeof window === 'undefined') return 'light';
-
-  const current = getCurrentTheme();
-  const next = getNextTheme(current);
-  setTheme(next);
-  return next;
-};
-
-// Load theme from localStorage or fallback to system preference
-export const getInitialTheme = (): Theme => {
-  if (typeof window === 'undefined') return 'light';
-
-  const savedTheme = localStorage.getItem('theme') as Theme | null;
-  if (savedTheme && themeOrder.includes(savedTheme)) return savedTheme;
-
-  // fallback to system preference
-  return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-};
-
-// Apply saved or system theme on app start or logout - without resetting or forcing a theme
-export const applySavedTheme = (): void => {
-  const theme = getInitialTheme();
-  setTheme(theme);
-};
-
-export const applyTheme = (theme: string) => {
-  if (theme === 'system') {
-    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-    document.documentElement.classList.toggle('dark', prefersDark);
-    localStorage.removeItem('theme');
+  
+  const storedTheme = localStorage.getItem('theme');
+  const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+  
+  let theme: 'light' | 'dark' = 'light';
+  
+  // Validate and set theme
+  if (storedTheme === 'dark' || storedTheme === 'light') {
+    theme = storedTheme;
   } else {
-    document.documentElement.classList.toggle('dark', theme === 'dark');
+    theme = prefersDark ? 'dark' : 'light';
     localStorage.setItem('theme', theme);
   }
+  
+  // Apply CSS variables
+  applyThemeVariables(theme);
+  
+  // Apply dark class to html
+  if (theme === 'dark') {
+    document.documentElement.classList.add('dark');
+  } else {
+    document.documentElement.classList.remove('dark');
+  }
+  
+  return theme;
+};
+
+export const setTheme = (theme: 'light' | 'dark') => {
+  if (typeof window === 'undefined') return theme;
+  
+  localStorage.setItem('theme', theme);
+  applySavedTheme();
+  
+  // Dispatch event for other tabs/windows
+  window.dispatchEvent(new StorageEvent('storage', {
+    key: 'theme',
+    newValue: theme,
+    storageArea: localStorage
+  }));
+  
+  return theme;
+};
+
+export const toggleTheme = (): 'light' | 'dark' => {
+  if (typeof window === 'undefined') return 'light';
+  
+  const currentTheme = localStorage.getItem('theme') as 'light' | 'dark' | null;
+  const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+  const theme = currentTheme || (prefersDark ? 'dark' : 'light');
+  
+  const newTheme = theme === 'dark' ? 'light' : 'dark';
+  return setTheme(newTheme);
 };

@@ -1,9 +1,55 @@
-import api from "@/services/api";
 import { ErrorResponse, User, UserState, Permission, TemporaryPermissionsResponse, TemporaryPermissionAssignment, TemporaryPermission, ActiveTemporaryPermissionsResponse } from "@/types/ui";
 import { createAsyncThunk, createSlice, PayloadAction } from "@reduxjs/toolkit";
 import { AxiosError } from "axios";
 import Cookies from 'js-cookie';
 import { reducers, extraReducers } from "./userReducers";
+import { publicApi } from "@/services/api.public";
+import { createAuthApiClient } from "@/services/api";
+
+// Helper function to get token based on portal
+const getTokenForPortal = (portal: "admin" | "customer"): string | null => {
+    // Try portal-specific token first
+    const portalToken = Cookies.get(`${portal}_access_token`);
+    if (portalToken) return portalToken;
+    
+    // Fallback to generic token
+    const genericToken = Cookies.get('token');
+    if (genericToken) return genericToken;
+    
+    // Last resort - try any access token cookie
+    const allCookies = Cookies.get();
+    for (const [key, value] of Object.entries(allCookies)) {
+        if (key.includes('access_token') || key.includes('token')) {
+            return value;
+        }
+    }
+    
+    return null;
+};
+
+// Helper function to get current portal from URL or cookies
+const getCurrentPortal = (): "admin" | "customer" => {
+    // Check URL first
+    if (typeof window !== 'undefined') {
+        const pathname = window.location.pathname;
+        if (pathname.includes('/admin/') || pathname.startsWith('/admin')) {
+            return "admin";
+        }
+        if (pathname.includes('/customer/') || pathname.startsWith('/customer')) {
+            return "customer";
+        }
+    }
+    
+    // Check which token exists
+    const adminToken = Cookies.get('admin_access_token');
+    const customerToken = Cookies.get('customer_access_token');
+    
+    if (adminToken) return "admin";
+    if (customerToken) return "customer";
+    
+    // Default to admin
+    return "admin";
+};
 
 // Extend the initial state to include stats
 export const initialState: UserState = {
@@ -57,16 +103,22 @@ export const fetchUsers = createAsyncThunk<
             customerUsers: number;
         };
     },
-    { page?: number; search?: string; filters?: Record<string, string> },
+    { page?: number; search?: string; filters?: Record<string, string>; portal?: "admin" | "customer"; },
     { rejectValue: ErrorResponse }
 >(
     'users/fetchUsers',
-    async ({ page = 1, search = '', filters = {} }, { rejectWithValue }) => {
-
+    async ({ page = 1, search = '', filters = {}, portal }, { rejectWithValue }) => {
         try {
-            const token = Cookies.get('token');
+            // Use provided portal or detect from current context
+            const currentPortal = portal || getCurrentPortal();
+            const token = getTokenForPortal(currentPortal);
+            
+            if (!token) {
+                throw new Error('Authentication required');
+            }
+            
+            const api = createAuthApiClient(currentPortal);
             const response = await api.get('/users', {
-
                 params: {
                     page,
                     search,
@@ -75,11 +127,11 @@ export const fetchUsers = createAsyncThunk<
                 },
                 headers: { Authorization: `Bearer ${token}` },
             });
-            console.log('Raw API response:', response.data)
+            
+            console.log('Raw API response:', response.data);
 
             const meta = response.data.meta || {};
 
-            // Directly use counts from meta
             return {
                 users: response.data.data.data || [],
                 pagination: {
@@ -98,64 +150,81 @@ export const fetchUsers = createAsyncThunk<
             };
         } catch (err) {
             const error = err as AxiosError<ErrorResponse>;
+            console.error('Fetch users error:', error.response?.data || error.message);
+            
             if (error.response) {
-                return rejectWithValue(error.response.data);
+                return rejectWithValue({
+                    message: error.response.data?.message || 'Failed to fetch users',
+                    details: error.response.data?.details
+                });
             }
-            return rejectWithValue({ message: 'Failed to fetch users' });
+            return rejectWithValue({ 
+                message: 'Failed to fetch users',
+                details: { originalError: (err as Error).message }
+            });
         }
     }
 );
 
-
 export const fetchSingleUser = createAsyncThunk<
-    { user: User; permissions: Permission[] }, // Updated return type
-    { userId: string; relations?: string },
+    { user: User; permissions: Permission[] },
+    { userId: string; relations?: string; portal?: "admin" | "customer" },
     { rejectValue: ErrorResponse }
 >(
-    'users/fetchSingleUser',
-    async ({ userId, relations = 'roles,permissions' }, { rejectWithValue }) => {
+    "users/fetchSingleUser",
+    async (
+        { userId, relations = "roles,permissions", portal },
+        { rejectWithValue }
+    ) => {
         try {
             if (!userId) {
-                throw new Error('User ID is required');
+                throw new Error("User ID is required");
             }
 
-            const token = Cookies.get('token');
+            const currentPortal = portal || getCurrentPortal();
+            const token = getTokenForPortal(currentPortal);
+            
+            if (!token) {
+                throw new Error('Authentication required');
+            }
+
+            const api = createAuthApiClient(currentPortal);
             const response = await api.get(`/users/${userId}`, {
                 params: { relations },
                 headers: { Authorization: `Bearer ${token}` },
             });
 
-            // Handle different response structures
-            let userData;
-            if (response.data.data?.original?.data?.user) {
-                userData = response.data.data.original.data.user;
-            } else if (response.data.data) {
-                userData = response.data.data;
-            } else {
-                userData = response.data;
+            // Normalize response
+            const raw =
+                response.data?.data?.original?.data ??
+                response.data?.data ??
+                response.data;
+
+            if (!raw?.user || !raw.user.id) {
+                throw new Error("Invalid user data structure received");
             }
 
-            if (!userData || !userData.id) {
-                throw new Error('Invalid user data structure received');
-            }
-
-            return userData;
+            return {
+                user: raw.user,
+                permissions: raw.permissions ?? [],
+            };
         } catch (err) {
             const error = err as AxiosError<ErrorResponse>;
-            console.error('Error fetching single user:', error);
+            console.error("Error fetching single user:", error);
+
             if (error.response) {
                 return rejectWithValue({
-                    message: error.response.data?.message || 'Failed to fetch user',
-                    details: error.response.data?.details
+                    message: error.response.data?.message || "Failed to fetch user",
+                    details: error.response.data?.details,
                 });
             }
+
             return rejectWithValue({
-                message: 'Network error while fetching user'
+                message: "Network error while fetching user",
             });
         }
     }
 );
-
 
 // Soft delete user thunk
 export const softDeleteUser = createAsyncThunk<
@@ -168,18 +237,20 @@ export const softDeleteUser = createAsyncThunk<
             roles: string[];
         };
     },
-    string,
+    { userId: string; portal?: "admin" | "customer" },
     { rejectValue: ErrorResponse }
 >(
     'users/softDeleteUser',
-    async (userId, { rejectWithValue, dispatch }) => {
+    async ({ userId, portal }, { rejectWithValue, dispatch }) => {
         try {
-            const token = Cookies.get('token');
+            const currentPortal = portal || getCurrentPortal();
+            const token = getTokenForPortal(currentPortal);
+            
             if (!token) {
                 throw new Error('Authentication token not found');
             }
 
-            // Make sure the endpoint is correct (changed from /user to /users)
+            const api = createAuthApiClient(currentPortal);
             const response = await api.delete(`/user/${userId}`, {
                 headers: {
                     Authorization: `Bearer ${token}`,
@@ -187,7 +258,6 @@ export const softDeleteUser = createAsyncThunk<
                 },
             });
 
-            // Simplify the response handling
             const responseData = response.data;
 
             if (!responseData.success) {
@@ -195,13 +265,12 @@ export const softDeleteUser = createAsyncThunk<
             }
 
             // Refresh users list after deletion
-            await dispatch(fetchUsers({ page: 1 }));
+            await dispatch(fetchUsers({ page: 1, portal: currentPortal }));
 
             return {
                 success: responseData.success,
                 message: responseData.message,
                 data: responseData.data
-
             };
         } catch (err) {
             const error = err as AxiosError<ErrorResponse>;
@@ -218,7 +287,6 @@ export const softDeleteUser = createAsyncThunk<
     }
 );
 
-//Show Fetch Delete Users 
 // Async thunk for fetching soft-deleted users
 export const fetchDeletedUsers = createAsyncThunk<
     {
@@ -231,13 +299,16 @@ export const fetchDeletedUsers = createAsyncThunk<
             deleted_at: string;
         }>;
     },
-    void,
+    { portal?: "admin" | "customer" },
     { rejectValue: ErrorResponse }
 >(
     'users/fetchDeletedUsers',
-    async (_, { rejectWithValue }) => {
+    async ({ portal }, { rejectWithValue }) => {
         try {
-            const token = Cookies.get('token');
+            const currentPortal = portal || getCurrentPortal();
+            const token = getTokenForPortal(currentPortal);
+            
+            const api = createAuthApiClient(currentPortal);
             const response = await api.get(`/user/recycleBinUsers`, {
                 headers: { Authorization: `Bearer ${token}` },
             });
@@ -263,6 +334,7 @@ export const fetchDeletedUsers = createAsyncThunk<
         }
     }
 );
+
 export const restoreDeletedUser = createAsyncThunk<
     {
         success: boolean;
@@ -273,18 +345,20 @@ export const restoreDeletedUser = createAsyncThunk<
             roles: string[];
         };
     },
-    string, // userId as string parameter
+    { userId: string; portal?: "admin" | "customer" },
     { rejectValue: ErrorResponse }
 >(
     'users/restoreDeletedUser',
-    async (userId, { rejectWithValue, dispatch }) => {
+    async ({ userId, portal }, { rejectWithValue, dispatch }) => {
         try {
-            const token = Cookies.get('token');
+            const currentPortal = portal || getCurrentPortal();
+            const token = getTokenForPortal(currentPortal);
+            
             if (!token) {
                 throw new Error('Authentication token not found');
             }
 
-            // Change from POST to GET and remove empty body {}
+            const api = createAuthApiClient(currentPortal);
             const response = await api.get(`/user/restore/${userId}`, {
                 headers: { Authorization: `Bearer ${token}` },
             });
@@ -296,7 +370,7 @@ export const restoreDeletedUser = createAsyncThunk<
             }
 
             // Refresh deleted users list after restoration
-            dispatch(fetchDeletedUsers());
+            dispatch(fetchDeletedUsers({ portal: currentPortal }));
 
             return {
                 success: responseData.success,
@@ -328,22 +402,24 @@ export const forceDeleteUser = createAsyncThunk<
             user_name: string;
         };
     },
-    string, // userId as string parameter
+    { userId: string; portal?: "admin" | "customer" },
     { rejectValue: ErrorResponse }
 >(
     'users/forceDeleteUser',
-    async (userId, { rejectWithValue, dispatch }) => {
+    async ({ userId, portal }, { rejectWithValue, dispatch }) => {
         try {
-            const token = Cookies.get('token');
+            const currentPortal = portal || getCurrentPortal();
+            const token = getTokenForPortal(currentPortal);
+            
             if (!token) {
                 throw new Error('Authentication token not found');
             }
 
+            const api = createAuthApiClient(currentPortal);
             const response = await api.delete(`/user/${userId}/permanentDelete`, {
                 headers: { Authorization: `Bearer ${token}` },
             });
 
-            // Handle the nested response structure
             const responseData = response.data.data?.original || response.data;
 
             if (!responseData.success) {
@@ -351,8 +427,8 @@ export const forceDeleteUser = createAsyncThunk<
             }
 
             // Refresh both active and deleted users lists
-            dispatch(fetchUsers({ page: 1 }));
-            dispatch(fetchDeletedUsers());
+            dispatch(fetchUsers({ page: 1, portal: currentPortal }));
+            dispatch(fetchDeletedUsers({ portal: currentPortal }));
 
             return {
                 success: responseData.success,
@@ -374,8 +450,6 @@ export const forceDeleteUser = createAsyncThunk<
     }
 );
 
-// Add these new thunks to your existing userSlice.ts file
-
 // Bulk delete soft-deleted users (permanent delete)
 export const bulkDeleteSoftDeletedUsers = createAsyncThunk<
     {
@@ -384,13 +458,16 @@ export const bulkDeleteSoftDeletedUsers = createAsyncThunk<
         deleted_count: number;
         failed_ids: string[];
     },
-    string[], // Array of user IDs
+    { userIds: string[]; portal?: "admin" | "customer" },
     { rejectValue: ErrorResponse }
 >(
     'users/bulkDeleteSoftDeletedUsers',
-    async (userIds, { rejectWithValue, dispatch }) => {
+    async ({ userIds, portal }, { rejectWithValue, dispatch }) => {
         try {
-            const token = Cookies.get('token');
+            const currentPortal = portal || getCurrentPortal();
+            const token = getTokenForPortal(currentPortal);
+            
+            const api = createAuthApiClient(currentPortal);
             const response = await api.post('/users/recycle-bin/bulk-delete', {
                 user_ids: userIds
             }, {
@@ -404,7 +481,7 @@ export const bulkDeleteSoftDeletedUsers = createAsyncThunk<
             }
 
             // Refresh deleted users list
-            dispatch(fetchDeletedUsers());
+            dispatch(fetchDeletedUsers({ portal: currentPortal }));
 
             return responseData;
         } catch (err) {
@@ -430,13 +507,16 @@ export const restoreAllDeletedUsers = createAsyncThunk<
         restored_count: number;
         failed_ids: string[];
     },
-    void,
+    { portal?: "admin" | "customer" },
     { rejectValue: ErrorResponse }
 >(
     'users/restoreAllDeletedUsers',
-    async (_, { rejectWithValue, dispatch }) => {
+    async ({ portal }, { rejectWithValue, dispatch }) => {
         try {
-            const token = Cookies.get('token');
+            const currentPortal = portal || getCurrentPortal();
+            const token = getTokenForPortal(currentPortal);
+            
+            const api = createAuthApiClient(currentPortal);
             const response = await api.post('/users/recycle-bin/restore-all', {}, {
                 headers: { Authorization: `Bearer ${token}` },
             });
@@ -447,7 +527,6 @@ export const restoreAllDeletedUsers = createAsyncThunk<
                 throw new Error(responseData.message || 'Failed to restore all users');
             }
 
-            // Ensure the response has all required fields
             const result = {
                 success: responseData.success,
                 message: responseData.message,
@@ -456,8 +535,8 @@ export const restoreAllDeletedUsers = createAsyncThunk<
             };
 
             // Refresh both active and deleted users lists
-            dispatch(fetchUsers({ page: 1 }));
-            dispatch(fetchDeletedUsers());
+            dispatch(fetchUsers({ page: 1, portal: currentPortal }));
+            dispatch(fetchDeletedUsers({ portal: currentPortal }));
 
             return result;
         } catch (err) {
@@ -475,8 +554,7 @@ export const restoreAllDeletedUsers = createAsyncThunk<
     }
 );
 
-// Add these thunks after your existing thunks in userSlice.ts
-
+// Deactivate user
 export const deactivateUser = createAsyncThunk<
     {
         success: boolean;
@@ -486,13 +564,16 @@ export const deactivateUser = createAsyncThunk<
             status: string;
         };
     },
-    { userId: string; reason?: string },
+    { userId: string; reason?: string; portal?: "admin" | "customer" },
     { rejectValue: ErrorResponse }
 >(
     'users/deactivateUser',
-    async ({ userId, reason }, { rejectWithValue, dispatch }) => {
+    async ({ userId, reason, portal }, { rejectWithValue, dispatch }) => {
         try {
-            const token = Cookies.get('token');
+            const currentPortal = portal || getCurrentPortal();
+            const token = getTokenForPortal(currentPortal);
+            
+            const api = createAuthApiClient(currentPortal);
             const response = await api.post(`/users/${userId}/deactivate`,
                 { reason },
                 {
@@ -507,7 +588,7 @@ export const deactivateUser = createAsyncThunk<
             }
 
             // Refresh users list after deactivation
-            await dispatch(fetchUsers({ page: 1 }));
+            await dispatch(fetchUsers({ page: 1, portal: currentPortal }));
 
             return {
                 success: responseData.success,
@@ -529,6 +610,7 @@ export const deactivateUser = createAsyncThunk<
     }
 );
 
+// Activate user
 export const activateUser = createAsyncThunk<
     {
         success: boolean;
@@ -538,13 +620,16 @@ export const activateUser = createAsyncThunk<
             status: string;
         };
     },
-    { userId: string; reason?: string },
+    { userId: string; reason?: string; portal?: "admin" | "customer" },
     { rejectValue: ErrorResponse }
 >(
     'users/activateUser',
-    async ({ userId, reason }, { rejectWithValue, dispatch }) => {
+    async ({ userId, reason, portal }, { rejectWithValue, dispatch }) => {
         try {
-            const token = Cookies.get('token');
+            const currentPortal = portal || getCurrentPortal();
+            const token = getTokenForPortal(currentPortal);
+            
+            const api = createAuthApiClient(currentPortal);
             const response = await api.post(`/users/${userId}/activate`,
                 { reason },
                 {
@@ -559,7 +644,7 @@ export const activateUser = createAsyncThunk<
             }
 
             // Refresh users list after activation
-            await dispatch(fetchUsers({ page: 1 }));
+            await dispatch(fetchUsers({ page: 1, portal: currentPortal }));
 
             return {
                 success: responseData.success,
@@ -581,7 +666,6 @@ export const activateUser = createAsyncThunk<
     }
 );
 
-//Assgin Role to User Assgin Role To user and Sync and revoke Role
 // Assign roles to user
 export const assignRolesToUser = createAsyncThunk<
     {
@@ -596,13 +680,16 @@ export const assignRolesToUser = createAsyncThunk<
             roles: string[];
         };
     },
-    { userId: string; roles: string[]; sync?: boolean },
+    { userId: string; roles: string[]; sync?: boolean; portal?: "admin" | "customer" },
     { rejectValue: ErrorResponse }
 >(
     'users/assignRolesToUser',
-    async ({ userId, roles, sync = true }, { rejectWithValue }) => {
+    async ({ userId, roles, sync = true, portal }, { rejectWithValue }) => {
         try {
-            const token = Cookies.get('token');
+            const currentPortal = portal || getCurrentPortal();
+            const token = getTokenForPortal(currentPortal);
+            
+            const api = createAuthApiClient(currentPortal);
             const response = await api.post(`/users/${userId}/roles`, {
                 roles,
                 sync
@@ -632,8 +719,7 @@ export const assignRolesToUser = createAsyncThunk<
     }
 );
 
-// features/user/userSlice.ts
-// features/user/userSlice.ts
+// Sync user roles
 export const syncUserRoles = createAsyncThunk<
     {
         success: boolean;
@@ -648,13 +734,16 @@ export const syncUserRoles = createAsyncThunk<
             roles: string[];
         };
     },
-    { userId: string; roles: string[]; sync: boolean },
+    { userId: string; roles: string[]; sync: boolean; portal?: "admin" | "customer" },
     { rejectValue: ErrorResponse }
 >(
     'users/syncUserRoles',
-    async ({ userId, roles, sync }, { rejectWithValue }) => {
+    async ({ userId, roles, sync, portal }, { rejectWithValue }) => {
         try {
-            const token = Cookies.get('token');
+            const currentPortal = portal || getCurrentPortal();
+            const token = getTokenForPortal(currentPortal);
+            
+            const api = createAuthApiClient(currentPortal);
             const response = await api.post(`/user/${userId}/sync-roles`, {
                 roles,
                 sync
@@ -664,9 +753,7 @@ export const syncUserRoles = createAsyncThunk<
 
             console.log('Sync roles API response:', response.data);
 
-            // Handle empty response
             if (!response.data || Object.keys(response.data).length === 0) {
-                // Return a mock response structure for empty responses
                 return {
                     success: true,
                     message: 'Roles synced successfully',
@@ -716,13 +803,16 @@ export const removeRolesFromUser = createAsyncThunk<
             remaining_roles: string[];
         };
     },
-    { userId: string; roles: string[] },
+    { userId: string; roles: string[]; portal?: "admin" | "customer" },
     { rejectValue: ErrorResponse }
 >(
     'users/removeRolesFromUser',
-    async ({ userId, roles }, { rejectWithValue }) => {
+    async ({ userId, roles, portal }, { rejectWithValue }) => {
         try {
-            const token = Cookies.get('token');
+            const currentPortal = portal || getCurrentPortal();
+            const token = getTokenForPortal(currentPortal);
+            
+            const api = createAuthApiClient(currentPortal);
             const response = await api.delete(`/users/${userId}/roles`, {
                 data: { roles },
                 headers: { Authorization: `Bearer ${token}` },
@@ -760,13 +850,16 @@ export const changeUserRole = createAsyncThunk<
             new_role: string;
         };
     },
-    { userId: string; newRole: string },
+    { userId: string; newRole: string; portal?: "admin" | "customer" },
     { rejectValue: ErrorResponse }
 >(
     'users/changeUserRole',
-    async ({ userId, newRole }, { rejectWithValue, dispatch }) => {
+    async ({ userId, newRole, portal }, { rejectWithValue, dispatch }) => {
         try {
-            const token = Cookies.get('token');
+            const currentPortal = portal || getCurrentPortal();
+            const token = getTokenForPortal(currentPortal);
+            
+            const api = createAuthApiClient(currentPortal);
             const response = await api.patch(`/user/${userId}/userRole`, {
                 role: newRole
             }, {
@@ -780,7 +873,7 @@ export const changeUserRole = createAsyncThunk<
             }
 
             // Refresh user details to get updated roles
-            await dispatch(fetchSingleUser({ userId, relations: 'roles,permissions' }));
+            await dispatch(fetchSingleUser({ userId, relations: 'roles,permissions', portal: currentPortal }));
 
             return responseData;
         } catch (err) {
@@ -798,61 +891,58 @@ export const changeUserRole = createAsyncThunk<
     }
 );
 
-//Permission Settings for User
+// Assign temporary permissions
 export const assignTemporaryPermissions = createAsyncThunk<
-  TemporaryPermissionsResponse,
-  {
-    userId: string;
-    permissions: TemporaryPermissionAssignment[];
-    reason?: string;
-  },
-  { rejectValue: ErrorResponse }
+    TemporaryPermissionsResponse,
+    {
+        userId: string;
+        permissions: TemporaryPermissionAssignment[];
+        reason?: string;
+        portal?: "admin" | "customer";
+    },
+    { rejectValue: ErrorResponse }
 >(
-  'users/assignTemporaryPermissions',
-  async ({ userId, permissions, reason }, { rejectWithValue }) => {
-    try {
-      const token = Cookies.get('token');
-      
-      // FIX: The component now sends the correct structure
-      // Just use the first permission object (they should all be the same)
-      const permissionNames = permissions[0]?.permissions || [];
-      
-      //console.log('🔍 DEBUG - In Redux slice - permissionNames:', permissionNames);
-      //console.log('🔍 DEBUG - In Redux slice - type of first element:', typeof permissionNames[0]);
-      //console.log('🔍 DEBUG - In Redux slice - first element:', permissionNames[0]);
-      
-      const payload = {
-        permissions: permissionNames, // Array of permission names
-        expires_at: permissions[0]?.expires_at,
-        reason: reason || permissions[0]?.reason || 'Temporary access'
-      };
+    'users/assignTemporaryPermissions',
+    async ({ userId, permissions, reason, portal }, { rejectWithValue }) => {
+        try {
+            const currentPortal = portal || getCurrentPortal();
+            const token = getTokenForPortal(currentPortal);
+            
+            const permissionNames = permissions[0]?.permissions || [];
 
-      console.log('🔍 DEBUG - Final payload to backend:', payload);
+            const payload = {
+                permissions: permissionNames,
+                expires_at: permissions[0]?.expires_at,
+                reason: reason || permissions[0]?.reason || 'Temporary access'
+            };
 
-      const response = await api.post(`/users/${userId}/temporary-permissions`, payload, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+            console.log('🔍 DEBUG - Final payload to backend:', payload);
 
-      const responseData = response.data.data?.original || response.data;
+            const api = createAuthApiClient(currentPortal);
+            const response = await api.post(`/users/${userId}/temporary-permissions`, payload, {
+                headers: { Authorization: `Bearer ${token}` },
+            });
 
-      if (!responseData.success) {
-        throw new Error(responseData.message || 'Failed to assign temporary permissions');
-      }
+            const responseData = response.data.data?.original || response.data;
 
-      return responseData;
-    } catch (err) {
-      const error = err as AxiosError<ErrorResponse>;
-      if (error.response) {
-        return rejectWithValue({
-          message: error.response.data?.message || 'Failed to assign temporary permissions',
-          details: error.response.data?.details
-        });
-      }
-      return rejectWithValue({
-        message: (err as Error).message || 'Network error while assigning temporary permissions'
-      });
+            if (!responseData.success) {
+                throw new Error(responseData.message || 'Failed to assign temporary permissions');
+            }
+
+            return responseData;
+        } catch (err) {
+            const error = err as AxiosError<ErrorResponse>;
+            if (error.response) {
+                return rejectWithValue({
+                    message: error.response.data?.message || 'Failed to assign temporary permissions',
+                    details: error.response.data?.details
+                });
+            }
+            return rejectWithValue({
+                message: (err as Error).message || 'Network error while assigning temporary permissions'
+            });
+        }
     }
-  }
 );
 
 // Revoke temporary permissions
@@ -862,13 +952,17 @@ export const revokeTemporaryPermissions = createAsyncThunk<
         userId: string;
         permissions: string[];
         reason?: string;
+        portal?: "admin" | "customer";
     },
     { rejectValue: ErrorResponse }
 >(
     'users/revokeTemporaryPermissions',
-    async ({ userId, permissions, reason }, { rejectWithValue }) => {
+    async ({ userId, permissions, reason, portal }, { rejectWithValue }) => {
         try {
-            const token = Cookies.get('token');
+            const currentPortal = portal || getCurrentPortal();
+            const token = getTokenForPortal(currentPortal);
+            
+            const api = createAuthApiClient(currentPortal);
             const response = await api.post(`/users/${userId}/revoke-permissions`, {
                 permissions,
                 reason
@@ -907,13 +1001,16 @@ export const getTemporaryPermissions = createAsyncThunk<
             all_temporary_permissions: TemporaryPermission[];
         };
     },
-    string, // userId
+    { userId: string; portal?: "admin" | "customer" },
     { rejectValue: ErrorResponse }
 >(
     'users/getTemporaryPermissions',
-    async (userId, { rejectWithValue }) => {
+    async ({ userId, portal }, { rejectWithValue }) => {
         try {
-            const token = Cookies.get('token');
+            const currentPortal = portal || getCurrentPortal();
+            const token = getTokenForPortal(currentPortal);
+            
+            const api = createAuthApiClient(currentPortal);
             const response = await api.get(`/users/${userId}/get-temporary-permissions`, {
                 headers: { Authorization: `Bearer ${token}` },
             });
@@ -943,13 +1040,16 @@ export const getTemporaryPermissions = createAsyncThunk<
 // Get active temporary permissions only
 export const getActiveTemporaryPermissions = createAsyncThunk<
     ActiveTemporaryPermissionsResponse,
-    string, // userId
+    { userId: string; portal?: "admin" | "customer" },
     { rejectValue: ErrorResponse }
 >(
     'users/getActiveTemporaryPermissions',
-    async (userId, { rejectWithValue }) => {
+    async ({ userId, portal }, { rejectWithValue }) => {
         try {
-            const token = Cookies.get('token');
+            const currentPortal = portal || getCurrentPortal();
+            const token = getTokenForPortal(currentPortal);
+            
+            const api = createAuthApiClient(currentPortal);
             const response = await api.get(`/users/${userId}/get-active-temporaryPermission`, {
                 headers: { Authorization: `Bearer ${token}` },
             });
@@ -983,13 +1083,16 @@ export const cleanupExpiredTemporaryPermissions = createAsyncThunk<
         message: string;
         cleaned_count?: number;
     },
-    void,
+    { portal?: "admin" | "customer" },
     { rejectValue: ErrorResponse }
 >(
     'users/cleanupExpiredTemporaryPermissions',
-    async (_, { rejectWithValue }) => {
+    async ({ portal }, { rejectWithValue }) => {
         try {
-            const token = Cookies.get('token');
+            const currentPortal = portal || getCurrentPortal();
+            const token = getTokenForPortal(currentPortal);
+            
+            const api = createAuthApiClient(currentPortal);
             const response = await api.get('/users/cleaenup-temporary-permissions', {
                 headers: { Authorization: `Bearer ${token}` },
             });
@@ -1016,7 +1119,6 @@ export const cleanupExpiredTemporaryPermissions = createAsyncThunk<
     }
 );
 
-
 const userSlice = createSlice({
     name: 'users',
     initialState,
@@ -1026,7 +1128,13 @@ const userSlice = createSlice({
     }
 });
 
+export const {
+    clearMessages,
+    setSelectedUser,
+    resetUserState,
+    setSelectedUserPermissions,
+    clearTemporaryPermissionsError,
+    clearTemporaryPermissions
+} = userSlice.actions;
 
-export const { clearMessages, setSelectedUser, resetUserState, setSelectedUserPermissions, clearTemporaryPermissionsError,
-    clearTemporaryPermissions } = userSlice.actions;
 export default userSlice.reducer;
